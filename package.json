@@ -1,10 +1,10 @@
 {
-    "name": "libary-template",
+    "name": "wink-dao",
     "version": "1.0.0",
     "keywords": [
-        "vite",
-        "libary",
-        "template"
+        "dao",
+        "nodejs",
+        "mysql"
     ],
     "author": {
         "name": "向文可",
@@ -12,7 +12,7 @@
         "url": "https://github.com/x-wink"
     },
     "repository": {
-        "url": "https://github.com/x-wink/libary-template"
+        "url": "https://github.com/x-wink/wink-dao"
     },
     "private": false,
     "files": [
