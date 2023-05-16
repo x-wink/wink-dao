@@ -1,0 +1,18 @@
+{
+    "include": ["env.d.ts", "src/**/*", "docs/**/*"],
+    "compilerOptions": {
+        "lib": ["ESNext", "DOM"],
+        "types": [],
+        "outDir": "types",
+        "rootDirs": ["src", "docs"],
+        "declaration": true,
+        "declarationMap": true,
+        "emitDeclarationOnly": true,
+        "skipLibCheck": true
+    },
+    "references": [
+        {
+            "path": "./tsconfig.config.json"
+        }
+    ]
+}
