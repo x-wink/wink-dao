@@ -5,6 +5,7 @@
         "types": [],
         "outDir": "types",
         "rootDirs": ["src", "docs"],
+        "module": "NodeNext",
         "declaration": true,
         "declarationMap": true,
         "emitDeclarationOnly": true,

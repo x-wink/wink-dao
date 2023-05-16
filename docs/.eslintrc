@@ -1,4 +1,0 @@
-{
-    "root": true,
-    "extends": ["@saatana97/eslint-config/vue"]
-}
