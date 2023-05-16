@@ -1,29 +1,36 @@
-<h1 align="center">欢迎使用我的库项目模板 👋</h1>
+<h1 align="center">欢迎使用WinkDao 👋</h1>
 <p>
   <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-blue.svg?cacheSeconds=2592000" />
-  <a href="https://github.com/x-wink/libary-template#readme" target="_blank">
+  <a href="https://github.com/x-wink/wink-dao#readme" target="_blank">
     <img alt="Documentation" src="https://img.shields.io/badge/documentation-yes-brightgreen.svg" />
   </a>
 </p>
 
-## ⬇️ 使用方式
+## ⬇️ 安装依赖
 
 ```cmd
-npx degit x-wink/libary-template#main my-project
-cd my-project
-npm install
-npm run dev
+npm install --save wink-dao
+pnpm add --save wink-dao
+```
+
+## ⬇️ 使用方式
+
+```ts
+import { useDao } from 'wink-dao';
+const { get, select, insert, update, remove, revoke } = useDao({
+    config: {
+        host: '',
+        port: 0,
+        user: '',
+        password: '',
+        datebase: '',
+    },
+});
 ```
 
 ## 🎯 框架依赖
 
--   [Vite](https://cn.vitejs.dev/) 脚手架
--   [Typescript](https://www.tslang.cn) JavaScript 的超集
--   [Eslint](https://eslint.bootcss.com/) 可组装的 JavaScript 和 JSX 检查工具
--   [Prettier](https://prettier.io/) 代码格式化程序
--   [LintStaged](https://github.com/okonet/lint-staged#readme) 针对暂存的 git 文件运行检查
--   [Husky](https://typicode.github.io/husky) 改善你的提交
--   [CommitLint](https://github.com/conventional-changelog/commitlint#readme) 检查代码提交消息
+-   [mysql](https://github.com/mysqljs/mysql#readme) MySQL 数据库协议
 
 ## 👤 Author
 
@@ -34,7 +41,7 @@ npm run dev
 
 ## 🤝 Contributing
 
-Contributions, issues and feature requests are welcome!<br />Feel free to check [issues page](https://github.com/x-wink/libary-template/issues).
+Contributions, issues and feature requests are welcome!<br />Feel free to check [issues page](https://github.com/x-wink/wink-dao/issues).
 
 ## Show your support
 
