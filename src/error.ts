@@ -1,5 +1,6 @@
 export class DaoError extends Error {
-    constructor(err: string, ...args: unknown[]) {
-        super('[DaoError] ' + err, ...args);
+    constructor(err: string, cause?: unknown) {
+        super('[DaoError] ' + err);
+        this.cause = cause;
     }
 }
