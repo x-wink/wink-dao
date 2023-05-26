@@ -20,6 +20,13 @@ export const useDao = (options: DaoOptions) => {
             });
         });
     };
+    /**
+     * 执行SQL语句
+     * @param sql sql语句，变量请使用 ? 占位符，防止sql注入
+     * @param values 变量值集合，用于替换占位符
+     * @returns 执行结果
+     * @example exec('select * from user where id = ?', [1]);
+     */
     const exec = <T>(sql: string, values?: unknown[]): Promise<T> => {
         return new Promise((resolve, reject) => {
             getConnection().then((connection) => {
@@ -99,6 +106,14 @@ export const useDao = (options: DaoOptions) => {
         res.push('set', placeholder, `where ${ID} = ?`);
         return { sql: res.join(' '), values };
     };
+    /**
+     * 主键查询
+     * @param table 表名或者Select子语句
+     * @param id 主键
+     * @returns 主键对应实体
+     * @example get('user', 1);
+     * @example get('select nickname from user', 1);
+     */
     const get = async <T extends Entity>(table: string, id: number): Promise<T | undefined> => {
         if (!table.toLowerCase().startsWith('select')) {
             table = `select * from ${table}`;
@@ -106,6 +121,14 @@ export const useDao = (options: DaoOptions) => {
         const { sql, values } = buildSelect(table, { [ID]: id, [DEL_FLAG]: Entity.NORMAL });
         return (await exec<T[]>(sql, values))[0];
     };
+    /**
+     * 条件查询
+     * @param table 表名或者Select子语句
+     * @param condition 条件对象
+     * @returns 符合条件的实体列表
+     * @example select('user', { sex: 1 });
+     * @example select('select nickname from user', { sex: 1 });
+     */
     const select = <T extends Entity>(table: string, condition?: Partial<T>): Promise<T[]> => {
         if (!table.toLowerCase().startsWith('select')) {
             table = `select * from ${table}`;
@@ -113,6 +136,13 @@ export const useDao = (options: DaoOptions) => {
         const { sql, values } = buildSelect(table, condition);
         return exec<T[]>(sql, values);
     };
+    /**
+     * 插入数据
+     * @param table 表名或者Insert子语句
+     * @param entity 实体对象
+     * @returns 实体ID
+     * @example insert('user', { nickname: 'wink' });
+     */
     const insert = async <T extends Entity>(table: string, entity: T): Promise<number> => {
         if (!table.toLowerCase().startsWith('insert')) {
             table = `insert into ${table}`;
@@ -121,6 +151,14 @@ export const useDao = (options: DaoOptions) => {
         const res = await exec<ExecResult>(sql, values);
         return res.insertId;
     };
+    /**
+     * 更新数据
+     * @param table 表名或者Update子语句
+     * @param entity 实体对象
+     * @param fields 要修改的字段，默认全部
+     * @returns 受影响的行数
+     * @example update('user', { id: 1, nickname: 'wink', sex: 1 }, ['sex']);
+     */
     const update = async <T extends Entity>(table: string, entity: T, fields?: string[]): Promise<number> => {
         if (!table.toLowerCase().startsWith('update')) {
             table = `update ${table}`;
@@ -129,9 +167,23 @@ export const useDao = (options: DaoOptions) => {
         const res = await exec<ExecResult>(sql, values);
         return res.affectedRows;
     };
+    /**
+     * 隐藏数据，逻辑删除
+     * @param table 表名
+     * @param id 主键
+     * @returns 受影响的行数
+     * @example remove('user', 1);
+     */
     const remove = async (table: string, id: number): Promise<number> => {
         return update(table, { [ID]: id, [DEL_FLAG]: Entity.REMOVED }, [DEL_FLAG]);
     };
+    /**
+     * 恢复数据，取消逻辑删除
+     * @param table 表名
+     * @param id 主键
+     * @returns 受影响的行数
+     * @example revoke('user', 1);
+     */
     const revoke = async (table: string, id: number): Promise<number> => {
         return update(table, { [ID]: id, [DEL_FLAG]: Entity.NORMAL }, [DEL_FLAG]);
     };
@@ -142,5 +194,6 @@ export const useDao = (options: DaoOptions) => {
         update,
         remove,
         revoke,
+        exec,
     };
 };

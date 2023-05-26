@@ -17,7 +17,7 @@ pnpm add --save wink-dao
 
 ```ts
 import { useDao } from 'wink-dao';
-const { get, select, insert, update, remove, revoke } = useDao({
+const { exec, get, select, insert, update, remove, revoke } = useDao({
     config: {
         host: '',
         port: 0,
