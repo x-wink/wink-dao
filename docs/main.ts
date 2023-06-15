@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { useDao } from '../src/index';
+import { ColumnType, TableManagedPolicies, AutoIncrementEntity, useDao, useOrm } from '../src';
 import dotenv from 'dotenv';
 dotenv.config({
     path: '.env.local',
@@ -17,8 +17,51 @@ if (Object.values(config).some((item) => !item)) {
     );
 }
 console.table(config);
-const dao = useDao({
-    config,
-    debug: true,
-});
-dao.get('user', 1).then(console.info);
+
+class Menu extends AutoIncrementEntity {
+    name?: string;
+    code?: string;
+    sort?: number;
+    isDirectory?: boolean;
+    constructor(data?: Partial<Menu>) {
+        super();
+        Object.assign(this, data);
+    }
+}
+
+const main = async () => {
+    const dao = useDao({
+        config: `mysql://${config.user}:${config.password}@${config.host}:${config.port}/${config.database}?debug=false`,
+        debug: true,
+    });
+    const orm = useOrm(dao, {
+        tableManagedPolicy: TableManagedPolicies.UPDATE,
+    });
+    const repository = await orm.registRepository('menu', {
+        name: {
+            type: ColumnType.STRING,
+            length: 20,
+            required: true,
+        },
+        code: {
+            type: ColumnType.STRING,
+            length: 20,
+            required: true,
+        },
+        sort: {
+            type: ColumnType.INT,
+            required: true,
+            defaultValue: '0',
+        },
+        isDirectory: {
+            type: ColumnType.BOOLEAN,
+            required: true,
+            defaultValue: 'false',
+        },
+    });
+    const test = new Menu({ code: 'test', name: '测试' });
+    const id = await repository.create(test);
+    const res = await repository.get(id);
+    console.info(res);
+};
+main();

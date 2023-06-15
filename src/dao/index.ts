@@ -1,9 +1,7 @@
 import { PoolConnection, createPool } from 'mysql';
-import { Entity } from './base';
-import { camel2underline } from './utils';
-import { DaoOptions, ExecResult } from './types';
-import { NoSuchTableError } from './error';
-import { DEL_FLAG, ID } from './constants';
+import { DEL_FLAG, Entity, ID, NoSuchTableError } from '../defs';
+import { DaoOptions, ExecResult } from '../types';
+import { camel2underline } from '../utils';
 export const useDao = (options: DaoOptions) => {
     const { config, logger = console, debug = false, initSql } = options;
     const pool = createPool(config);
@@ -34,12 +32,12 @@ export const useDao = (options: DaoOptions) => {
                     connection.release();
                     if (err) {
                         if (['ER_NO_SUCH_TABLE'].includes(err.code)) {
+                            const tableName = err.sqlMessage!.match(/Table '(.*?)'/)![1].split('.')[1];
                             if (initSql) {
                                 await init(initSql);
                                 exec<T>(sql, values).then(resolve, reject);
                             } else {
-                                // TODO 获取表名
-                                throw new NoSuchTableError(sql, err);
+                                reject(new NoSuchTableError(tableName, err));
                             }
                         } else {
                             reject(err);
@@ -76,7 +74,9 @@ export const useDao = (options: DaoOptions) => {
         const res = [sql];
         const fields: string[] = [];
         const values: unknown[] = [];
-        const placeholder = Object.keys(entity)
+        const placeholder = Object.entries(entity)
+            .filter((entry) => typeof entry[1] !== 'undefined')
+            .map((entry) => entry[0])
             .map((field) => {
                 fields.push(camel2underline(field));
                 values.push(entity[field as keyof T]);
