@@ -1,4 +1,5 @@
 import type { PoolConfig } from 'mysql';
+import { useDao } from './core';
 export interface WriteLogFunc {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (...args: any[]): void;
@@ -10,6 +11,7 @@ export interface DaoLogger {
     debug: WriteLogFunc;
 }
 export type MysqlConfig = string | PoolConfig;
+export type WinkDao = ReturnType<typeof useDao>;
 export interface DaoOptions {
     config: MysqlConfig;
     logger?: DaoLogger;
