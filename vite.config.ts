@@ -18,7 +18,7 @@ export default (configEnv: ConfigEnv) => {
             }),
         ],
         build: {
-            sourcemap: true,
+            sourcemap: false,
             lib: {
                 formats: ['es', 'cjs', 'umd'],
                 fileName: (format) => {
