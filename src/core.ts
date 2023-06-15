@@ -1,10 +1,9 @@
 import { PoolConnection, createPool } from 'mysql';
 import { Entity } from './base';
-import { convertFieldName } from './utils';
+import { camel2underline } from './utils';
 import { DaoOptions, ExecResult } from './types';
-import { DaoError } from './error';
+import { NoSuchTableError } from './error';
 import { DEL_FLAG, ID } from './constants';
-
 export const useDao = (options: DaoOptions) => {
     const { config, logger = console, debug = false, initSql } = options;
     const pool = createPool(config);
@@ -39,7 +38,8 @@ export const useDao = (options: DaoOptions) => {
                                 await init(initSql);
                                 exec<T>(sql, values).then(resolve, reject);
                             } else {
-                                throw new DaoError('数据表不存在', err);
+                                // TODO 获取表名
+                                throw new NoSuchTableError(sql, err);
                             }
                         } else {
                             reject(err);
@@ -63,7 +63,7 @@ export const useDao = (options: DaoOptions) => {
             const placeholder = Object.keys(condition)
                 .map((field) => {
                     values.push(condition[field as keyof T]);
-                    return `${convertFieldName(field)} = ?`;
+                    return `${camel2underline(field)} = ?`;
                 })
                 .join(' and ');
             if (placeholder) {
@@ -78,7 +78,7 @@ export const useDao = (options: DaoOptions) => {
         const values: unknown[] = [];
         const placeholder = Object.keys(entity)
             .map((field) => {
-                fields.push(convertFieldName(field));
+                fields.push(camel2underline(field));
                 values.push(entity[field as keyof T]);
                 return '?';
             })
@@ -99,7 +99,7 @@ export const useDao = (options: DaoOptions) => {
         const placeholder = fields
             .map((field) => {
                 values.push(entity[field as keyof T]);
-                return `${convertFieldName(field)} = ?`;
+                return `${camel2underline(field)} = ?`;
             })
             .join(', ');
         values.push(entity[ID]);
@@ -114,7 +114,10 @@ export const useDao = (options: DaoOptions) => {
      * @example get('user', 1);
      * @example get('select nickname from user', 1);
      */
-    const get = async <T extends Entity>(table: string, id: number): Promise<T | undefined> => {
+    const get = async <T extends Entity, PK extends Required<Entity>['id']>(
+        table: string,
+        id: PK
+    ): Promise<T | undefined> => {
         if (!table.toLowerCase().startsWith('select')) {
             table = `select * from ${table}`;
         }
@@ -188,6 +191,8 @@ export const useDao = (options: DaoOptions) => {
         return update(table, { [ID]: id, [DEL_FLAG]: Entity.NORMAL }, [DEL_FLAG]);
     };
     return {
+        config,
+        logger,
         get,
         select,
         insert,
