@@ -1,5 +1,7 @@
 /* eslint-disable no-console */
-import { useDao } from '../src/index';
+import { ColumnType, TableManagedPolicies } from '../src/enums';
+import { AutoIncrementEntity, useDao } from '../src/index';
+import { useOrm } from '../src/orm';
 import dotenv from 'dotenv';
 dotenv.config({
     path: '.env.local',
@@ -17,8 +19,46 @@ if (Object.values(config).some((item) => !item)) {
     );
 }
 console.table(config);
-const dao = useDao({
-    config,
-    debug: true,
-});
-dao.get('user', 1).then(console.info);
+
+class Menu extends AutoIncrementEntity {
+    name?: string;
+    code?: string;
+    sort?: number;
+    isDirectory?: boolean;
+}
+
+const main = async () => {
+    const dao = useDao({
+        config,
+        debug: true,
+    });
+    const orm = useOrm(dao, {
+        tableManagedPolicy: TableManagedPolicies.UPDATE,
+    });
+    const repository = await orm.registRepository('menu', {
+        name: {
+            type: ColumnType.STRING,
+            length: 20,
+            required: true,
+        },
+        code: {
+            type: ColumnType.STRING,
+            length: 20,
+            required: true,
+        },
+        sort: {
+            type: ColumnType.INT,
+            required: true,
+            defaultValue: '0',
+        },
+        isDirectory: {
+            type: ColumnType.BOOLEAN,
+            required: true,
+            defaultValue: 'false',
+        },
+    });
+    const id = await repository.create(new Menu());
+    const res = await repository.get(id);
+    console.info(res);
+};
+main();

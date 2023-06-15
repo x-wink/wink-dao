@@ -10,3 +10,11 @@ export const camel2underline = (name: string) => {
         return (index ? '_' : '') + sub.toLowerCase();
     });
 };
+export const upperFirstChar = (str: string) => {
+    return str.replace(/^./, (sub) => sub.toUpperCase());
+};
+
+export const useAutoIncrementId = () => {
+    let id = 0;
+    return () => ++id;
+};
