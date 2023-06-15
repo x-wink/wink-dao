@@ -34,12 +34,12 @@ export const useDao = (options: DaoOptions) => {
                     connection.release();
                     if (err) {
                         if (['ER_NO_SUCH_TABLE'].includes(err.code)) {
+                            const tableName = err.sqlMessage!.match(/Table '(.*?)'/)![1].split('.')[1];
                             if (initSql) {
                                 await init(initSql);
                                 exec<T>(sql, values).then(resolve, reject);
                             } else {
-                                // TODO 获取表名
-                                throw new NoSuchTableError(sql, err);
+                                throw new NoSuchTableError(tableName, err);
                             }
                         } else {
                             reject(err);
