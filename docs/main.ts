@@ -11,7 +11,7 @@ const config = {
     password: process.env.password,
     database: process.env.database,
 };
-if (!config.host || !config.port || !config.user || !config.password || !config.database) {
+if (Object.values(config).some((item) => !item)) {
     throw new Error(
         '需要在项目根目录下创建.env.local文件（不会提交到git），并按照config对象属性值配置好自己的数据库参数'
     );
