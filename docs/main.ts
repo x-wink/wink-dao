@@ -25,11 +25,15 @@ class Menu extends AutoIncrementEntity {
     code?: string;
     sort?: number;
     isDirectory?: boolean;
+    constructor(data?: Partial<Menu>) {
+        super();
+        Object.assign(this, data);
+    }
 }
 
 const main = async () => {
     const dao = useDao({
-        config,
+        config: `mysql://${config.user}:${config.password}@${config.host}:${config.port}/${config.database}`,
         debug: true,
     });
     const orm = useOrm(dao, {
@@ -57,7 +61,8 @@ const main = async () => {
             defaultValue: 'false',
         },
     });
-    const id = await repository.create(new Menu());
+    const test = new Menu({ code: 'test', name: '测试' });
+    const id = await repository.create(test);
     const res = await repository.get(id);
     console.info(res);
 };

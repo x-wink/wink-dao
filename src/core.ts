@@ -39,7 +39,7 @@ export const useDao = (options: DaoOptions) => {
                                 await init(initSql);
                                 exec<T>(sql, values).then(resolve, reject);
                             } else {
-                                throw new NoSuchTableError(tableName, err);
+                                reject(new NoSuchTableError(tableName, err));
                             }
                         } else {
                             reject(err);
@@ -76,7 +76,9 @@ export const useDao = (options: DaoOptions) => {
         const res = [sql];
         const fields: string[] = [];
         const values: unknown[] = [];
-        const placeholder = Object.keys(entity)
+        const placeholder = Object.entries(entity)
+            .filter((entry) => typeof entry[1] !== 'undefined')
+            .map((entry) => entry[0])
             .map((field) => {
                 fields.push(camel2underline(field));
                 values.push(entity[field as keyof T]);

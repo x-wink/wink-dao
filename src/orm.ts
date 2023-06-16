@@ -3,7 +3,8 @@ import { ColumnType, TableManagedPolicies } from './enums';
 import { WinkDao } from './types';
 import { camel2underline, upperFirstChar, useAutoIncrementId } from './utils';
 import { defualtDelFlagColumn, defualtPrimaryKeyColumn, getDefaultLength } from './config';
-import { Entity, InvalidTypeError } from '.';
+import { InvalidTypeError } from './error';
+import { PoolConfig } from 'mysql';
 export interface ColumnDefine {
     type: ColumnType;
     autoIncrement?: boolean;
@@ -19,12 +20,52 @@ export interface OrmOptions {
 }
 export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
     const { tableManagedPolicy = TableManagedPolicies.MANUAL } = options ?? {};
-    // TODO 根据连接字符串获取数据库名称，创建表的时候加上数据库名
-    const database = typeof dao.config !== 'string' && dao.config.database;
+
+    const parseConfig = (config: typeof dao.config) => {
+        const REG_CONN_STR = /^mysql:\/\/(.+?):(.+?)@(.+?):(\d+)\/(.+?)(\?.+)?$/;
+        let res: PoolConfig;
+        if (typeof config === 'string') {
+            const [, user, password, host, port, database, query] = config.match(REG_CONN_STR)!;
+            const rest = Object.fromEntries(
+                (query ?? '')
+                    .replace('?', '')
+                    .split('&')
+                    .map((item) => item.split('='))
+            ) as Record<string, string>;
+            res = Object.fromEntries(
+                Object.entries({
+                    user,
+                    password,
+                    host,
+                    port,
+                    database,
+                    ...rest,
+                }).map(([k, v]) => {
+                    try {
+                        v = JSON.parse(v);
+                    } catch (e) {
+                        //
+                    }
+                    return [k, v];
+                })
+            );
+        } else {
+            res = config;
+        }
+        return res;
+    };
+    const config = parseConfig(dao.config);
+    const database = config.database!;
+
     const autoId = useAutoIncrementId();
-    const hasTable = (name: string) => {
-        // TODO 判断数据表是否存在
-        return false;
+
+    const allTable = async () => {
+        const res = await dao.exec<Record<string, string>[]>('show tables');
+        return res.map((item) => Object.values(item)[0]);
+    };
+
+    const hasTable = async (name: string) => {
+        return (await allTable()).includes(name);
     };
 
     const secureName = (name: string) => `\`${name}\``;
@@ -63,7 +104,7 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
         const uksSql = entries
             .filter(([, config]) => config.unique)
             .map((entry) => `unique index ${secureName(`uk_${autoId()}`)}(${secureName(entry[0])})`);
-        return `create table if not exists ${secureName(name)} (\n${[colsSql, pkSql, ...uksSql]
+        return `create table if not exists ${secureName(database)}.${secureName(name)} (\n${[colsSql, pkSql, ...uksSql]
             .filter(Boolean)
             .join(',\n')}\n)engine=InnoDB;`;
     };
@@ -74,7 +115,7 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
                   return dao.exec(sql);
               }
             : () => {
-                  //
+                  // 啥也不干
               };
     const tryUpdateTable =
         tableManagedPolicy >= TableManagedPolicies.CREATE
@@ -82,13 +123,13 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
                   // TODO 更新数据表结构
               }
             : () => {
-                  //
+                  // 啥也不干
               };
     const registRepository = async (name: string, config: Record<string, ColumnDefine>) => {
         const tableName = camel2underline('T' + upperFirstChar(name));
 
         // 数据表托管
-        tableManagedPolicy > TableManagedPolicies.MANUAL && hasTable(tableName)
+        tableManagedPolicy > TableManagedPolicies.MANUAL && (await hasTable(tableName))
             ? await tryUpdateTable(tableName, config)
             : await tryCreateTable(tableName, config);
 
