@@ -15,6 +15,7 @@ export interface ColumnDefine {
     comment?: string;
     defaultValue?: string;
 }
+export type TableDefine = Record<string, ColumnDefine>;
 export interface OrmOptions {
     tableManagedPolicy?: TableManagedPolicies;
 }
@@ -68,6 +69,19 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
         return (await allTable()).includes(name);
     };
 
+    const detailTable = async (name: string) => {
+        const res = await dao.exec<{ 'Create Table': string; Table: string }[]>(
+            `show create table ${secureName(name)}`
+        );
+        return res[0]['Create Table'];
+    };
+
+    const parseTableDefineSql = (sql: string) => {
+        const res: TableDefine = {};
+        // TODO 解析旧表结构
+        return res;
+    };
+
     const secureName = (name: string) => `\`${name}\``;
     const generateColumnDefineSql = (name: string, config: ColumnDefine) => {
         name = camel2underline(name);
@@ -86,7 +100,7 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
             typeof defaultValue === 'undefined' ? '' : ` default ${isStr ? JSON.stringify(defaultValue) : defaultValue}`
         }${autoIncrement ? ' auto_increment' : ''}${comment ? ` comment ${JSON.stringify(comment)}` : ''}`;
     };
-    const generateTableDefineSql = (name: string, configs: Record<string, ColumnDefine>, isEntityTable = true) => {
+    const generateTableDefineSql = (name: string, configs: TableDefine, isEntityTable = true) => {
         const entries = Object.entries(configs);
         const cols = entries.map(([name, config]) => generateColumnDefineSql(name, config));
         const pks = entries.filter(([, config]) => config.primary).map((entry) => secureName(entry[0]));
@@ -120,6 +134,9 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
     const tryUpdateTable =
         tableManagedPolicy >= TableManagedPolicies.CREATE
             ? async (name: string, config: Record<string, ColumnDefine>) => {
+                  const tableDefineSql = await detailTable(name);
+                  const tableDefine = parseTableDefineSql(tableDefineSql);
+                  console.info(tableDefine);
                   // TODO 更新数据表结构
               }
             : () => {
