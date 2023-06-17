@@ -6,19 +6,19 @@
   </a>
 </p>
 
-## 💤 各版本文档
+## 📚 各版本文档
 
 -   ### [v1.x](https://github.com/x-wink/wink-dao/tree/main/documents/v1.md)
 -   ### [v2.x](https://github.com/x-wink/wink-dao#readme)
 
-## ⬇️ 安装依赖
+## 👇 安装依赖
 
 ```cmd
 npm install --save wink-dao
 pnpm add --save wink-dao
 ```
 
-## ⬇️ 使用方式
+## 📖 示例代码
 
 ```ts
 import { useDao, useOrm, AutoTablePolicies, ColumnType, AutoIncrementEntity, ExecResult } from 'wink-dao';
@@ -106,6 +106,7 @@ const result: ExecResult = await repository.exec('delete from menu where id = ?'
 ## 😉 TODO
 
 -   [x] 新增`ORM`框架
+-   [ ] 处理关联关系
 -   [ ] 抽离`Mysql`耦合，改为插件形式
 -   [ ] 支持适配多个数据库
 -   [ ] 优化`DAO`基础能力
@@ -120,21 +121,21 @@ const result: ExecResult = await repository.exec('delete from menu where id = ?'
 
 -   [mysql](https://github.com/mysqljs/mysql#readme) MySQL 数据库协议
 
-## 👤 Author
+## 👤 作者
 
 **向文可**
 
--   Email: 13202090601@163.com
+-   Email: 1041367524@qq.com
 -   Github: [@x-wink](https://github.com/x-wink)
 
-## 🤝 Contributing
+## 🤝 贡献
 
-Contributions, issues and feature requests are welcome!<br />Feel free to check [issues page](https://github.com/x-wink/wink-dao/issues).
+ 欢迎大家随时[点击这里](https://github.com/x-wink/wink-dao/issues)为我提供贡献、问题和功能建议 
 
-## Show your support
+## 😘 感谢支持
 
-Give a ⭐️ if this project helped you!
+如果觉得项目对你有帮助，就帮我点个小星星吧~ ⭐️
 
 ---
 
-_This README was generated with ❤️ by [readme-md-generator](https://github.com/kefranabg/readme-md-generator)_
+本文档使用[readme-md-generator](https://github.com/kefranabg/readme-md-generator)模板生成
