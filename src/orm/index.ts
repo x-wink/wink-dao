@@ -1,13 +1,13 @@
 import { defualtDelFlagColumn, defualtPrimaryKeyColumn } from '../config';
-import { ENTITY_TABLE_NAME_PREFIX, Entity, TableManagedPolicies } from '../defs';
+import { ENTITY_TABLE_NAME_PREFIX, Entity, AutoTablePolicies } from '../defs';
 import { ExecResult, TableDefine, WinkDao } from '../types';
 import { camel2underline, upperFirstChar, parseConfig } from '../utils';
 import { useAutoTable } from './table';
 export interface OrmOptions {
-    tableManagedPolicy?: TableManagedPolicies;
+    autoTablePolicy?: AutoTablePolicies;
 }
 export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
-    const { tableManagedPolicy = TableManagedPolicies.MANUAL } = options ?? {};
+    const { autoTablePolicy = AutoTablePolicies.MANUAL } = options ?? {};
 
     const config = parseConfig(dao.config);
     const database = config.database!;
@@ -19,12 +19,16 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
 
     const registRepository = async (tableDefine: TableDefine) => {
         let { name } = tableDefine;
-        const enabledAutoTable = tableManagedPolicy > TableManagedPolicies.MANUAL;
+        if (autoTablePolicy === AutoTablePolicies.UPDATE) {
+            // TODO 实现后删除警告
+            dao.logger.warn('同步更新表结构暂未实现，暂时只能使用CREATE策略');
+        }
+        const enabledAutoTable = autoTablePolicy > AutoTablePolicies.MANUAL;
         name = enabledAutoTable ? camel2underline(ENTITY_TABLE_NAME_PREFIX + upperFirstChar(name)) : name;
         tableDefine = normalrizeTableDefine({ ...tableDefine, name }, enabledAutoTable);
 
         // 数据表托管
-        if (tableManagedPolicy > TableManagedPolicies.MANUAL) {
+        if (autoTablePolicy > AutoTablePolicies.MANUAL) {
             tableDefine.columnDefines.unshift(normalrizeColumnDefine(defualtPrimaryKeyColumn, enabledAutoTable));
             tableDefine.columnDefines.push(normalrizeColumnDefine(defualtDelFlagColumn, enabledAutoTable));
             (await hasTable(name)) ? await tryUpdateTable(tableDefine) : await tryCreateTable(tableDefine);

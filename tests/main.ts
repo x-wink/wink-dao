@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import {
     ColumnType,
-    TableManagedPolicies,
+    AutoTablePolicies,
     AutoIncrementEntity,
     useDao,
     useOrm,
@@ -40,10 +40,10 @@ const main = async () => {
         debug: true,
     });
     try {
-        const orm = useOrm(dao, {
-            tableManagedPolicy: TableManagedPolicies.UPDATE,
+        const { registRepository } = useOrm(dao, {
+            autoTablePolicy: AutoTablePolicies.UPDATE,
         });
-        const repository = await orm.registRepository({
+        const repository = await registRepository({
             name: 'menu',
             columnDefines: [
                 {
@@ -95,6 +95,13 @@ const main = async () => {
             throw new Error('执行更新数据测试失败');
         } else {
             console.info('执行更新数据测试通过');
+        }
+
+        const arr = await repository.select<Menu>({ code: 'test' });
+        if (arr.length !== 1) {
+            throw new Error('条件查询测试失败');
+        } else {
+            console.info('条件查询测试通过');
         }
 
         const res2 = await repository.get<Menu>(id);

@@ -9,6 +9,7 @@ import {
     REG_TABLE_DEFINE_PKS,
     REG_TABLE_DEFINE_PK_NAME,
     REG_TABLE_DEFINE_UK,
+    UnhandleError,
 } from '../defs';
 import { ColumnDefine, TableDefine, WinkDao } from '../types';
 import {
@@ -159,8 +160,11 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
         const oldTableDefine = parseTableDefineSql(tableDefineSql);
         const isSame = compare(newTableDefine, oldTableDefine, ['charset']);
         if (!isSame) {
-            // TODO 更新数据表结构
-            debugger;
+            // TODO 更新/同步数据表结构
+            throw new UnhandleError(
+                void 0,
+                new Error('数据表结构与配置不一致，暂未实现自动更新同步，请手动更新同步或删除旧表后重试')
+            );
         }
     };
     return {

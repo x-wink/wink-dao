@@ -67,7 +67,7 @@ export enum DelStatus {
 /**
  * 数据表托管策略
  */
-export enum TableManagedPolicies {
+export enum AutoTablePolicies {
     /**
      * 手动管理，框架不会干涉，默认值
      */
@@ -76,8 +76,9 @@ export enum TableManagedPolicies {
      * 数据表不存在时会自动创建，已存在则不干涉
      */
     CREATE = 1,
+    // TODO 实现后修改注释
     /**
-     * 数据表不存在时会自动创建，结构发生变化时会自动更新，生产环境慎用
+     * 数据表不存在时会自动创建，结构发生变化时会自动更新，生产环境慎用！（暂未实现）
      */
     UPDATE = 2,
 }

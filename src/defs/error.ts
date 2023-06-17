@@ -59,7 +59,7 @@ export class NoSuchTableError extends DaoError<string> {
  * 数据表不存在错误
  */
 export class UnhandleError extends DaoError<ExecInfo> {
-    constructor(info: ExecInfo, cuase?: unknown) {
+    constructor(info?: ExecInfo, cuase?: unknown) {
         super(DaoErrorType.UNHANDLE, DaoErrorInfo.UNHANDLE, info, cuase);
     }
 }
