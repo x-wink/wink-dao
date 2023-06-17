@@ -28,15 +28,19 @@ export const upperFirstChar = (str: string) => {
  * 其他使用===比较；
  */
 export const compare = <T>(a: T, b: T, ignoreFields?: string[]): boolean => {
-    debugger;
     let res = false;
     if (Array.isArray(a) && Array.isArray(b)) {
         res = a.length === b.length && a.every((item, index) => compare(item, b[index]), ignoreFields);
     } else if (a instanceof Date && b instanceof Date) {
         res = a.getTime() === b.getTime();
     } else if (a instanceof Object && b instanceof Object) {
-        // TODO 忽略属性
-        res = Object.keys(a).join(',') === Object.keys(b).join(',');
+        res =
+            Object.keys(a)
+                .filter((item) => !ignoreFields?.includes(item))
+                .join(',') ===
+            Object.keys(b)
+                .filter((item) => !ignoreFields?.includes(item))
+                .join(',');
         if (res) {
             for (const p in a) {
                 res = compare(a[p as keyof T], b[p as keyof T], ignoreFields);
@@ -47,6 +51,9 @@ export const compare = <T>(a: T, b: T, ignoreFields?: string[]): boolean => {
         }
     } else {
         res = a === b;
+    }
+    if (!res) {
+        console.info(a, b);
     }
     return res;
 };

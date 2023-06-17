@@ -10,25 +10,49 @@ import {
     REG_TABLE_DEFINE_PK_NAME,
     REG_TABLE_DEFINE_UK,
 } from '../defs';
-import { TableDefine, WinkDao } from '../types';
-import { camel2underline, clone, compare, findAllTablesSql, genTableDefineSql, getTableDefineSql } from '../utils';
+import { ColumnDefine, TableDefine, WinkDao } from '../types';
+import {
+    camel2underline,
+    clone,
+    compare,
+    findAllTablesSql,
+    genTableDefineSql,
+    getTableDefineSql,
+    parseJavaScriptTypeValue,
+} from '../utils';
 
+/**
+ * 自动数据表管理
+ * @param database 数据库名
+ * @param dao dao操作库
+ */
 export const useAutoTable = (database: string, dao: WinkDao) => {
+    /**
+     * 获取数据库中所有表名
+     */
     const allTable = async () => {
         const res = await dao.exec<Record<string, string>[]>(findAllTablesSql);
         return res.map((item) => Object.values(item)[0]);
     };
-
-    const hasTable = async (name: string) => {
+    /**
+     * 判断表名是否存在
+     */
+    const hasTable = async (tableName: string) => {
         const all = await allTable();
-        return all.includes(name);
+        return all.includes(tableName);
     };
-
-    const getTable = async (name: string) => {
-        const res = await dao.exec<{ [GET_TABLE_DEFINE_FIELD_NAME]: string; Table: string }[]>(getTableDefineSql(name));
+    /**
+     * 获取数据表定义SQL
+     */
+    const getTable = async (tableName: string) => {
+        const res = await dao.exec<{ [GET_TABLE_DEFINE_FIELD_NAME]: string; Table: string }[]>(
+            getTableDefineSql(tableName)
+        );
         return res[0][GET_TABLE_DEFINE_FIELD_NAME];
     };
-
+    /**
+     * 解析数据表定义SQL为数据表配置对象
+     */
     const parseTableDefineSql = (sql: string) => {
         const res: TableDefine = {
             name: '',
@@ -65,27 +89,71 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
                 dao.logger.warn('暂未支持的数据表定义子语句', row);
             }
         });
-        return res;
+        return normalrizeTableDefine(res);
     };
-
-    const normalrizeTableDefine = (tableDefine: TableDefine) => {
+    /**
+     * 标准化字段配置
+     * @throws InvalidTypeError
+     */
+    const normalrizeColumnDefine = (columnDefine: ColumnDefine, normalrizeName = false) => {
+        const {
+            type,
+            autoIncrement = false,
+            required = false,
+            primary = false,
+            unique = false,
+            comment,
+        } = columnDefine;
+        let { name, length = getDefaultLength(type), defaultValue } = columnDefine;
+        // 转换命名格式
+        if (normalrizeName) {
+            name = camel2underline(name);
+        }
+        // 统一长度格式，填充默认值
+        if (typeof length === 'number') {
+            length = [length];
+        }
+        columnDefine.length ??= getDefaultLength(columnDefine.type);
+        // 统一布尔类型默认值
+        if (type === ColumnType.BOOLEAN) {
+            defaultValue = String(+!!parseJavaScriptTypeValue(defaultValue));
+        }
+        // 校验自增字段数据类型
+        if (columnDefine.autoIncrement && columnDefine.type !== ColumnType.INT) {
+            throw new InvalidTypeError(columnDefine.name);
+        }
+        return {
+            name,
+            type,
+            length,
+            autoIncrement,
+            required,
+            primary,
+            unique,
+            defaultValue,
+            comment,
+        };
+    };
+    /**
+     * 标准化数据表配置
+     */
+    const normalrizeTableDefine = (tableDefine: TableDefine, normalrizeName = false) => {
         const res = clone(tableDefine);
-        res.name = camel2underline(res.name);
-        res.columnDefines.forEach((col) => {
-            if (typeof col.length === 'number') {
-                col.length = [col.length];
-            }
-            col.length ??= getDefaultLength(col.type);
-            if (col.type !== ColumnType.INT && col.autoIncrement) {
-                throw new InvalidTypeError(col.name);
-            }
-        });
+        if (normalrizeName) {
+            res.name = camel2underline(res.name);
+        }
+        res.columnDefines = res.columnDefines.map((item) => normalrizeColumnDefine(item, normalrizeName));
         return res;
     };
-
+    /**
+     * 尝试根据配置创建数据表
+     */
     const tryCreateTable = (tableDefine: TableDefine) => {
         return dao.exec(genTableDefineSql(database, tableDefine));
     };
+    /**
+     * 尝试根据配置更新数据表
+     */
     const tryUpdateTable = async (newTableDefine: TableDefine) => {
         const tableDefineSql = await getTable(newTableDefine.name);
         const oldTableDefine = parseTableDefineSql(tableDefineSql);
@@ -97,6 +165,7 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
     };
     return {
         hasTable,
+        normalrizeColumnDefine,
         normalrizeTableDefine,
         tryCreateTable,
         tryUpdateTable,

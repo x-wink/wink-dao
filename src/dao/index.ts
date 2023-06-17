@@ -1,5 +1,5 @@
 import { PoolConnection, createPool } from 'mysql';
-import { DEL_FLAG, Entity, ID, NoSuchTableError } from '../defs';
+import { DEL_FLAG, Entity, ID, NoSuchTableError, SqlSyntaxError, UnhandleError } from '../defs';
 import { DaoOptions, ExecResult, PK } from '../types';
 import { camel2underline } from '../utils';
 export const useDao = (options: DaoOptions) => {
@@ -23,8 +23,9 @@ export const useDao = (options: DaoOptions) => {
      * @param values 变量值集合，用于替换占位符
      * @returns 执行结果
      * @example exec('select * from user where id = ?', [1]);
+     * @throws DaoError
      */
-    const exec = <T>(sql: string, values?: unknown[]): Promise<T> => {
+    const exec = <T = ExecResult>(sql: string, values?: unknown[]): Promise<T> => {
         return new Promise((resolve, reject) => {
             getConnection().then((connection) => {
                 if (debug) {
@@ -43,8 +44,10 @@ export const useDao = (options: DaoOptions) => {
                             } else {
                                 reject(new NoSuchTableError(tableName, err));
                             }
+                        } else if (['ER_PARSE_ERROR'].includes(err.code)) {
+                            reject(new SqlSyntaxError({ sql, values }, err));
                         } else {
-                            reject(err);
+                            reject(new UnhandleError({ sql, values }, err));
                         }
                     } else {
                         resolve(data as T);

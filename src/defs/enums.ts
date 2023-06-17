@@ -11,9 +11,17 @@ export enum DaoErrorType {
      */
     INVALID_TYPE = 101,
     /**
+     * SQL语法错误
+     */
+    SQL_SYNTAX_ERROR = 200,
+    /**
      * 数据表不存在
      */
-    NO_SUCH_TABLE = 200,
+    NO_SUCH_TABLE = 201,
+    /**
+     * 没有特殊处理
+     */
+    UNHANDLE = 0,
 }
 
 /**
@@ -29,9 +37,17 @@ export enum DaoErrorInfo {
      */
     INVALID_TYPE = '数据列类型错误',
     /**
+     * SQL语法错误
+     */
+    SQL_SYNTAX_ERROR = 'SQL语法错误',
+    /**
      * 数据表不存在
      */
     NO_SUCH_TABLE = '数据表不存在',
+    /**
+     * 没有特殊处理
+     */
+    UNHANDLE = '数据库异常',
 }
 
 /**
