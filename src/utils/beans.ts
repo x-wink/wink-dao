@@ -52,9 +52,6 @@ export const compare = <T>(a: T, b: T, ignoreFields?: string[]): boolean => {
     } else {
         res = a === b;
     }
-    if (!res) {
-        console.info(a, b);
-    }
     return res;
 };
 
