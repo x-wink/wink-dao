@@ -1,9 +1,7 @@
 import { PoolConnection, createPool } from 'mysql';
-import { Entity } from './base';
-import { camel2underline } from './utils';
-import { DaoOptions, ExecResult } from './types';
-import { NoSuchTableError } from './error';
-import { DEL_FLAG, ID } from './constants';
+import { DEL_FLAG, Entity, ID, NoSuchTableError, SqlSyntaxError, UnhandleError } from '../defs';
+import { DaoOptions, ExecResult, PK } from '../types';
+import { camel2underline } from '../utils';
 export const useDao = (options: DaoOptions) => {
     const { config, logger = console, debug = false, initSql } = options;
     const pool = createPool(config);
@@ -25,11 +23,16 @@ export const useDao = (options: DaoOptions) => {
      * @param values 变量值集合，用于替换占位符
      * @returns 执行结果
      * @example exec('select * from user where id = ?', [1]);
+     * @throws DaoError
      */
-    const exec = <T>(sql: string, values?: unknown[]): Promise<T> => {
+    const exec = <T = ExecResult>(sql: string, values?: unknown[]): Promise<T> => {
         return new Promise((resolve, reject) => {
             getConnection().then((connection) => {
-                debug && logger.debug(sql, values?.join(','));
+                if (debug) {
+                    logger.debug(sql);
+                    logger.debug(values);
+                    logger.debug('---------\n');
+                }
                 connection.query(sql, values, async (err, data) => {
                     connection.release();
                     if (err) {
@@ -41,8 +44,10 @@ export const useDao = (options: DaoOptions) => {
                             } else {
                                 reject(new NoSuchTableError(tableName, err));
                             }
+                        } else if (['ER_PARSE_ERROR'].includes(err.code)) {
+                            reject(new SqlSyntaxError({ sql, values }, err));
                         } else {
-                            reject(err);
+                            reject(new UnhandleError({ sql, values }, err));
                         }
                     } else {
                         resolve(data as T);
@@ -88,20 +93,20 @@ export const useDao = (options: DaoOptions) => {
         res.push('(', fields.join(', '), ')', 'values', '(', placeholder, ')');
         return { sql: res.join(' '), values };
     };
-    const buildUpdate = <T extends Entity>(sql: string, entity: Partial<T>, fields?: string[]) => {
+    const buildUpdate = <T extends Entity>(sql: string, entity: Partial<T>, fields?: (keyof T)[]) => {
         if (!entity[ID]) {
             throw new Error('主键不能为空');
         }
         const res = [sql];
         const values: unknown[] = [];
-        fields = fields || Object.keys(entity);
+        fields = fields || (Object.keys(entity) as (keyof T)[]);
         if (!fields.length) {
             throw new Error('更新字段列表不能为空');
         }
         const placeholder = fields
             .map((field) => {
-                values.push(entity[field as keyof T]);
-                return `${camel2underline(field)} = ?`;
+                values.push(entity[field]);
+                return `${camel2underline(field as string)} = ?`;
             })
             .join(', ');
         values.push(entity[ID]);
@@ -116,10 +121,7 @@ export const useDao = (options: DaoOptions) => {
      * @example get('user', 1);
      * @example get('select nickname from user', 1);
      */
-    const get = async <T extends Entity, PK extends Required<Entity>['id']>(
-        table: string,
-        id: PK
-    ): Promise<T | undefined> => {
+    const get = async <T extends Entity>(table: string, id: PK): Promise<T | undefined> => {
         if (!table.toLowerCase().startsWith('select')) {
             table = `select * from ${table}`;
         }
@@ -164,7 +166,7 @@ export const useDao = (options: DaoOptions) => {
      * @returns 受影响的行数
      * @example update('user', { id: 1, nickname: 'wink', sex: 1 }, ['sex']);
      */
-    const update = async <T extends Entity>(table: string, entity: T, fields?: string[]): Promise<number> => {
+    const update = async <T extends Entity>(table: string, entity: T, fields?: (keyof T)[]): Promise<number> => {
         if (!table.toLowerCase().startsWith('update')) {
             table = `update ${table}`;
         }
@@ -179,7 +181,7 @@ export const useDao = (options: DaoOptions) => {
      * @returns 受影响的行数
      * @example remove('user', 1);
      */
-    const remove = async (table: string, id: number): Promise<number> => {
+    const remove = async (table: string, id: PK): Promise<number> => {
         return update(table, { [ID]: id, [DEL_FLAG]: Entity.REMOVED }, [DEL_FLAG]);
     };
     /**
@@ -189,7 +191,7 @@ export const useDao = (options: DaoOptions) => {
      * @returns 受影响的行数
      * @example revoke('user', 1);
      */
-    const revoke = async (table: string, id: number): Promise<number> => {
+    const revoke = async (table: string, id: PK): Promise<number> => {
         return update(table, { [ID]: id, [DEL_FLAG]: Entity.NORMAL }, [DEL_FLAG]);
     };
     return {

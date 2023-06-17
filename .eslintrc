@@ -1,7 +1,4 @@
 {
     "root": true,
-    "extends": ["@saatana97/eslint-config"],
-    "rules": {
-        "@typescript-eslint/no-non-null-assertion": "off"
-    }
+    "extends": ["@xwink/eslint-config"]
 }
