@@ -22,8 +22,9 @@ pnpm add --save wink-dao
 
 ```ts
 import { useDao, useOrm, AutoTablePolicies, ColumnType, AutoIncrementEntity, ExecResult } from 'wink-dao';
+
 // DAO基础操作库
-const { exec, get, select, insert, update, remove, revoke } = useDao({
+const dao = useDao({
     config: {
         host: '',
         port: 0,
@@ -32,7 +33,7 @@ const { exec, get, select, insert, update, remove, revoke } = useDao({
         datebase: '',
     },
 });
-
+const { exec, get, select, insert, update, remove, revoke } = dao;
 // 使用ORM框架
 const { registRepository } = useOrm(dao, {
     // 开启自动托管数据表后会自动创建表,表名会自动增加前缀t_，并将表名和字段名的驼峰命名转为下划线
