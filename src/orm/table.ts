@@ -104,6 +104,7 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
             primary = false,
             unique = false,
             comment,
+            refrence,
         } = columnDefine;
         let { name, length = getDefaultLength(type), defaultValue } = columnDefine;
         // 转换命名格式
@@ -133,6 +134,7 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
             unique,
             defaultValue,
             comment,
+            refrence,
         };
     };
     /**

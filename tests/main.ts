@@ -23,12 +23,18 @@ const config = {
 };
 console.table(config);
 
-class Menu extends AutoIncrementEntity {
-    name?: string;
-    code?: string;
-    sort?: number;
-    isDirectory?: boolean;
-    constructor(data?: Partial<Menu>) {
+class User extends AutoIncrementEntity {
+    nickname?: string;
+    username?: string;
+    password?: string;
+    phone?: string;
+    idCard?: string;
+    avatar?: string;
+    birthday?: Date;
+    locked?: boolean;
+    exprise?: boolean;
+    enabled?: boolean;
+    constructor(data?: Partial<User>) {
         super();
         Object.assign(this, data);
     }
@@ -44,38 +50,68 @@ const main = async () => {
             autoTablePolicy: AutoTablePolicies.UPDATE,
         });
         const repository = await registRepository({
-            name: 'menu',
+            name: 'user',
             columnDefines: [
                 {
-                    name: 'name',
+                    name: 'nickname',
                     type: ColumnType.STRING,
                     length: 20,
                     required: true,
+                    defaultValue: '匿名用户',
                 },
                 {
-                    name: 'code',
+                    name: 'username',
                     type: ColumnType.STRING,
                     length: 20,
                     required: true,
-                    primary: true,
                     unique: true,
                 },
                 {
-                    name: 'sort',
-                    type: ColumnType.INT,
+                    name: 'password',
+                    type: ColumnType.STRING,
+                    length: 64,
                     required: true,
-                    defaultValue: '0',
                 },
                 {
-                    name: 'isDirectory',
+                    name: 'phone',
+                    type: ColumnType.STRING,
+                    length: 20,
+                },
+                {
+                    name: 'idCard',
+                    type: ColumnType.STRING,
+                    length: 18,
+                },
+                {
+                    name: 'avatar',
+                    type: ColumnType.STRING,
+                },
+                {
+                    name: 'birthday',
+                    type: ColumnType.DATE,
+                },
+                {
+                    name: 'locked',
                     type: ColumnType.BOOLEAN,
                     required: true,
                     defaultValue: 'false',
                 },
+                {
+                    name: 'exprise',
+                    type: ColumnType.BOOLEAN,
+                    required: true,
+                    defaultValue: 'false',
+                },
+                {
+                    name: 'enabled',
+                    type: ColumnType.BOOLEAN,
+                    required: true,
+                    defaultValue: 'true',
+                },
             ],
         });
 
-        const test = new Menu({ code: 'test', name: '测试' });
+        const test = new User({ username: 'test', password: '123456' });
         const id = await repository.create(test);
         if (!id) {
             throw new Error('插入数据测试失败');
@@ -83,28 +119,28 @@ const main = async () => {
             console.info('插入数据测试通过');
         }
 
-        const res = await repository.get<Menu>(id);
+        const res = await repository.get<User>(id);
         if (!res) {
             throw new Error('主键查询测试失败');
         } else {
             console.info('主键查询测试通过');
         }
 
-        res.name = '测试2';
+        res.username = 'test2';
         if (!(await repository.update(res))) {
             throw new Error('执行更新数据测试失败');
         } else {
             console.info('执行更新数据测试通过');
         }
 
-        const arr = await repository.select<Menu>({ code: 'test' });
+        const arr = await repository.select<User>({ username: 'test2' });
         if (arr.length !== 1) {
             throw new Error('条件查询测试失败');
         } else {
             console.info('条件查询测试通过');
         }
 
-        const res2 = await repository.get<Menu>(id);
+        const res2 = await repository.get<User>(id);
         if (!compare(res, res2)) {
             throw new Error('校验更新数据测试失败');
         } else {
@@ -117,7 +153,7 @@ const main = async () => {
             console.info('执行移除数据测试通过');
         }
 
-        const res3 = await repository.get<Menu>(id);
+        const res3 = await repository.get<User>(id);
         if (res3) {
             throw new Error('校验移除数据测试失败');
         } else {
@@ -130,27 +166,27 @@ const main = async () => {
             console.info('执行恢复数据测试通过');
         }
 
-        const res4 = await repository.get<Menu>(id);
+        const res4 = await repository.get<User>(id);
         if (!res4) {
             throw new Error('校验恢复数据测试失败');
         } else {
             console.info('校验恢复数据测试通过');
         }
 
-        const res5 = (await repository.exec<Menu[]>('select * from t_menu where id = ?', [id]))[0];
+        const res5 = (await repository.exec<User[]>('select * from t_user where id = ?', [id]))[0];
         if (!compare(res4, res5)) {
             throw new Error('执行查询SQL测试失败');
         } else {
             console.info('执行查询SQL测试通过');
         }
 
-        if ((await repository.exec('delete from t_menu where id = ?', [id])).affectedRows !== 1) {
+        if ((await repository.exec('delete from t_user where id = ?', [id])).affectedRows !== 1) {
             throw new Error('执行删除SQL测试失败');
         } else {
             console.info('执行删除SQL测试通过');
         }
 
-        const res6 = await repository.get<Menu>(id);
+        const res6 = await repository.get<User>(id);
         if (res6) {
             throw new Error('校验执行删除SQL测试失败');
         } else {
@@ -158,7 +194,7 @@ const main = async () => {
         }
 
         try {
-            await repository.exec('delete from t_menu2');
+            await repository.exec('delete from t_user2');
             throw new Error('数据表不存在异常测试失败');
         } catch (e) {
             if (e instanceof NoSuchTableError) {
@@ -169,7 +205,7 @@ const main = async () => {
         }
 
         try {
-            await repository.exec('delete from t_menu where id =');
+            await repository.exec('delete from t_user where id =');
             throw new Error('SQL语法异常测试失败');
         } catch (e) {
             if (e instanceof SqlSyntaxError) {

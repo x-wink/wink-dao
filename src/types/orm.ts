@@ -1,4 +1,4 @@
-import { ColumnType } from '../defs';
+import { ColumnType, RefrenceRelaction } from '../defs';
 
 export interface ColumnDefine {
     name: string;
@@ -10,6 +10,12 @@ export interface ColumnDefine {
     unique?: boolean;
     comment?: string;
     defaultValue?: string;
+    refrence?: {
+        table: string;
+        field: string;
+        relaction: RefrenceRelaction;
+        joinTable?: string;
+    };
 }
 export interface TableDefine {
     name: string;

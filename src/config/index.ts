@@ -36,7 +36,7 @@ export const getDefaultLength = (type: ColumnType) => {
             length = [1];
             break;
         case ColumnType.DATE:
-            length = [3];
+            length = [];
             break;
         case ColumnType.TIME:
             length = [3];

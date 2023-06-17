@@ -26,11 +26,11 @@ export const findAllTablesSql = 'show tables';
 export const genColumnDefineSql = (columnDefine: ColumnDefine) => {
     const { name, type, length, autoIncrement, required, defaultValue, comment } = columnDefine;
     const isStr = [ColumnType.STRING, ColumnType.TEXT, ColumnType.JSON].includes(type);
-    return `${secureName(name)} ${type}(${(length as number[]).join(',')})${autoIncrement ? ' unsigned' : ''}${
-        required ? ' not null' : ''
-    }${typeof defaultValue === 'undefined' ? '' : ` default ${isStr ? JSON.stringify(defaultValue) : defaultValue}`}${
-        autoIncrement ? ' auto_increment' : ''
-    }${comment ? ` comment ${JSON.stringify(comment)}` : ''}`;
+    return `${secureName(name)} ${type}${(length as number[]).length ? `(${(length as number[]).join(',')})` : ''}${
+        autoIncrement ? ' unsigned' : ''
+    }${required ? ' not null' : ''}${
+        typeof defaultValue === 'undefined' ? '' : ` default ${isStr ? JSON.stringify(defaultValue) : defaultValue}`
+    }${autoIncrement ? ' auto_increment' : ''}${comment ? ` comment ${JSON.stringify(comment)}` : ''}`;
 };
 
 const autoId = useAutoIncrementId();
