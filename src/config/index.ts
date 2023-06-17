@@ -1,6 +1,9 @@
-import { ColumnType } from './enums';
-import { ColumnDefine } from './orm';
+import { ColumnType } from '../defs';
+import { ColumnDefine } from '../types';
 
+/**
+ * 根据字段类型获取默认长度
+ */
 export const getDefaultLength = (type: ColumnType) => {
     let err: never,
         length = [0];
@@ -54,6 +57,10 @@ export const getDefaultLength = (type: ColumnType) => {
     }
     return length;
 };
+
+/**
+ * 默认主键字段定义
+ */
 export const defualtPrimaryKeyColumn = {
     type: ColumnType.INT,
     autoIncrement: true,
@@ -61,6 +68,10 @@ export const defualtPrimaryKeyColumn = {
     required: true,
     comment: '自增主键',
 } as ColumnDefine;
+
+/**
+ * 默认逻辑删除标识字段定义
+ */
 export const defualtDelFlagColumn = {
     type: ColumnType.BOOLEAN,
     required: true,

@@ -1,9 +1,7 @@
 import { PoolConnection, createPool } from 'mysql';
-import { Entity } from './base';
-import { camel2underline } from './utils';
-import { DaoOptions, ExecResult } from './types';
-import { NoSuchTableError } from './error';
-import { DEL_FLAG, ID } from './constants';
+import { DEL_FLAG, Entity, ID, NoSuchTableError } from '../defs';
+import { DaoOptions, ExecResult } from '../types';
+import { camel2underline } from '../utils';
 export const useDao = (options: DaoOptions) => {
     const { config, logger = console, debug = false, initSql } = options;
     const pool = createPool(config);

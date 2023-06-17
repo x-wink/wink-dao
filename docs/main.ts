@@ -1,7 +1,5 @@
 /* eslint-disable no-console */
-import { ColumnType, TableManagedPolicies } from '../src/enums';
-import { AutoIncrementEntity, useDao } from '../src/index';
-import { useOrm } from '../src/orm';
+import { ColumnType, TableManagedPolicies, AutoIncrementEntity, useDao, useOrm } from '../src';
 import dotenv from 'dotenv';
 dotenv.config({
     path: '.env.local',
@@ -33,7 +31,7 @@ class Menu extends AutoIncrementEntity {
 
 const main = async () => {
     const dao = useDao({
-        config: `mysql://${config.user}:${config.password}@${config.host}:${config.port}/${config.database}`,
+        config: `mysql://${config.user}:${config.password}@${config.host}:${config.port}/${config.database}?debug=false`,
         debug: true,
     });
     const orm = useOrm(dao, {
