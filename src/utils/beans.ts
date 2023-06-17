@@ -1,3 +1,5 @@
+import { REG_FIRST_CHAR, REG_UPPER_CHARS } from '../defs';
+
 /**
  * 大小驼峰转下划线分割
  * @example camel2underline("createDate") === "create_date"
@@ -5,7 +7,7 @@
  * @returns
  */
 export const camel2underline = (name: string) => {
-    return name.replace(/[A-Z]/g, (sub, index) => {
+    return name.replace(REG_UPPER_CHARS, (sub, index) => {
         return (index ? '_' : '') + sub.toLowerCase();
     });
 };
@@ -15,5 +17,5 @@ export const camel2underline = (name: string) => {
  * @example upperFirstChar("name") === "Name"
  */
 export const upperFirstChar = (str: string) => {
-    return str.replace(/^./, (sub) => sub.toUpperCase());
+    return str.replace(REG_FIRST_CHAR, (sub) => sub.toUpperCase());
 };

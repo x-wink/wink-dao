@@ -10,4 +10,8 @@ export interface ColumnDefine {
     comment?: string;
     defaultValue?: string;
 }
-export type TableDefine = Record<string, ColumnDefine>;
+export interface TableDefine {
+    name: string;
+    charset?: string;
+    columns: Record<string, ColumnDefine>;
+}

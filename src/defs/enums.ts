@@ -3,13 +3,35 @@
  */
 export enum DaoErrorType {
     /**
+     * 无效连接配置
+     */
+    INVALID_CONFIG = 100,
+    /**
      * 无效字段类型
      */
-    INVALID_TYPE = 100,
+    INVALID_TYPE = 101,
     /**
      * 数据表不存在
      */
     NO_SUCH_TABLE = 200,
+}
+
+/**
+ * Dao错误类型提示语
+ */
+export enum DaoErrorInfo {
+    /**
+     * 无效连接配置
+     */
+    INVALID_CONFIG = '数据库连接配置无效',
+    /**
+     * 无效字段类型
+     */
+    INVALID_TYPE = '数据列类型错误',
+    /**
+     * 数据表不存在
+     */
+    NO_SUCH_TABLE = '数据表不存在',
 }
 
 /**

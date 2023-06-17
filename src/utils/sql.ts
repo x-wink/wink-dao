@@ -16,6 +16,11 @@ export const secureName = (name: string) => `\`${name}\``;
 export const getTableDefineSql = (tableName: string) => `show create table ${secureName(tableName)}`;
 
 /**
+ * 查询所有数据表名的SQL
+ */
+export const findAllTablesSql = 'show tables';
+
+/**
  * 生成数据列的定义SQL
  * @param name 字段名
  * @param config 字段配置
@@ -43,11 +48,12 @@ const autoId = useAutoIncrementId();
  * 生成数据表的定义SQL
  * @param database 数据库名
  * @param tableName 数据表名
- * @param configs 数据表配置
+ * @param tableDefine 数据表配置
  * @param isEntityTable 是否为实体类表，否则为关系中间表，关系到是否添加实体基础字段和主键的创建
  */
-export const genTableDefineSql = (database: string, tableName: string, configs: TableDefine, isEntityTable = true) => {
-    const entries = Object.entries(configs);
+export const genTableDefineSql = (database: string, tableDefine: TableDefine, isEntityTable = true) => {
+    const { name: tableName, columns, charset } = tableDefine;
+    const entries = Object.entries(columns);
     const cols = entries.map(([name, config]) => genColumnDefineSql(name, config));
     const pks = entries.filter(([, config]) => config.primary).map((entry) => secureName(entry[0]));
     if (isEntityTable) {
@@ -66,5 +72,5 @@ export const genTableDefineSql = (database: string, tableName: string, configs: 
         .map((entry) => `unique index ${secureName(`uk_${autoId()}`)}(${secureName(entry[0])})`);
     return `create table if not exists ${secureName(database)}.${secureName(tableName)} (\n${[colsSql, pkSql, ...uksSql]
         .filter(Boolean)
-        .join(',\n')}\n)engine=InnoDB;`;
+        .join(',\n')}\n)engine=InnoDB${charset ? ` default charset ${charset}` : ''};`;
 };

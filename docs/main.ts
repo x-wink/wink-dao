@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { ColumnType, TableManagedPolicies, AutoIncrementEntity, useDao, useOrm } from '../src';
+import { ColumnType, TableManagedPolicies, AutoIncrementEntity, useDao, useOrm, InvalidConfigError } from '../src';
 import dotenv from 'dotenv';
 dotenv.config({
     path: '.env.local',
@@ -11,11 +11,6 @@ const config = {
     password: process.env.password,
     database: process.env.database,
 };
-if (Object.values(config).some((item) => !item)) {
-    throw new Error(
-        '需要在项目根目录下创建.env.local文件（不会提交到git），并按照config对象属性值配置好自己的数据库参数'
-    );
-}
 console.table(config);
 
 class Menu extends AutoIncrementEntity {
@@ -34,34 +29,47 @@ const main = async () => {
         config: `mysql://${config.user}:${config.password}@${config.host}:${config.port}/${config.database}?debug=false`,
         debug: true,
     });
-    const orm = useOrm(dao, {
-        tableManagedPolicy: TableManagedPolicies.UPDATE,
-    });
-    const repository = await orm.registRepository('menu', {
-        name: {
-            type: ColumnType.STRING,
-            length: 20,
-            required: true,
-        },
-        code: {
-            type: ColumnType.STRING,
-            length: 20,
-            required: true,
-        },
-        sort: {
-            type: ColumnType.INT,
-            required: true,
-            defaultValue: '0',
-        },
-        isDirectory: {
-            type: ColumnType.BOOLEAN,
-            required: true,
-            defaultValue: 'false',
-        },
-    });
-    const test = new Menu({ code: 'test', name: '测试' });
-    const id = await repository.create(test);
-    const res = await repository.get(id);
-    console.info(res);
+    try {
+        const orm = useOrm(dao, {
+            tableManagedPolicy: TableManagedPolicies.UPDATE,
+        });
+        const repository = await orm.registRepository({
+            name: 'menu',
+            columns: {
+                name: {
+                    type: ColumnType.STRING,
+                    length: 20,
+                    required: true,
+                },
+                code: {
+                    type: ColumnType.STRING,
+                    length: 20,
+                    required: true,
+                },
+                sort: {
+                    type: ColumnType.INT,
+                    required: true,
+                    defaultValue: '0',
+                },
+                isDirectory: {
+                    type: ColumnType.BOOLEAN,
+                    required: true,
+                    defaultValue: 'false',
+                },
+            },
+        });
+        const test = new Menu({ code: 'test', name: '测试' });
+        const id = await repository.create(test);
+        const res = await repository.get(id);
+        console.info(res);
+    } catch (e) {
+        if (e instanceof InvalidConfigError) {
+            console.error(
+                '需要在项目根目录下创建.env.local文件（不会提交到git），并按照config对象属性值配置好自己的数据库参数'
+            );
+        } else {
+            throw e;
+        }
+    }
 };
 main();
