@@ -35,28 +35,34 @@ const main = async () => {
         });
         const repository = await orm.registRepository({
             name: 'menu',
-            columns: {
-                name: {
+            columnDefines: [
+                {
+                    name: 'name',
                     type: ColumnType.STRING,
                     length: 20,
                     required: true,
                 },
-                code: {
+                {
+                    name: 'code',
                     type: ColumnType.STRING,
                     length: 20,
                     required: true,
+                    primary: true,
+                    unique: true,
                 },
-                sort: {
+                {
+                    name: 'sort',
                     type: ColumnType.INT,
                     required: true,
                     defaultValue: '0',
                 },
-                isDirectory: {
+                {
+                    name: 'isDirectory',
                     type: ColumnType.BOOLEAN,
                     required: true,
                     defaultValue: 'false',
                 },
-            },
+            ],
         });
         const test = new Menu({ code: 'test', name: '测试' });
         const id = await repository.create(test);

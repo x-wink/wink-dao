@@ -1,13 +1,8 @@
-import { ENTITY_TABLE_NAME_PREFIX, GET_TABLE_DEFINE_FIELD_NAME, TableManagedPolicies } from '../defs';
+import { defualtDelFlagColumn, defualtPrimaryKeyColumn } from '../config';
+import { ENTITY_TABLE_NAME_PREFIX, TableManagedPolicies } from '../defs';
 import { TableDefine, WinkDao } from '../types';
-import {
-    camel2underline,
-    findAllTablesSql,
-    genTableDefineSql,
-    getTableDefineSql,
-    upperFirstChar,
-    parseConfig,
-} from '../utils';
+import { camel2underline, upperFirstChar, parseConfig } from '../utils';
+import { useAutoTable } from './table';
 export interface OrmOptions {
     tableManagedPolicy?: TableManagedPolicies;
 }
@@ -17,52 +12,8 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
     const config = parseConfig(dao.config);
     const database = config.database!;
 
-    const allTable = async () => {
-        const res = await dao.exec<Record<string, string>[]>(findAllTablesSql);
-        return res.map((item) => Object.values(item)[0]);
-    };
+    const { hasTable, normalrizeTableDefine, tryCreateTable, tryUpdateTable } = useAutoTable(database, dao);
 
-    const hasTable = async (name: string) => {
-        const all = await allTable();
-        return all.includes(name);
-    };
-
-    const getTable = async (name: string) => {
-        const res = await dao.exec<{ [GET_TABLE_DEFINE_FIELD_NAME]: string; Table: string }[]>(getTableDefineSql(name));
-        return res[0][GET_TABLE_DEFINE_FIELD_NAME];
-    };
-
-    const parseTableDefineSql = (sql: string) => {
-        const res: TableDefine = {
-            name: '',
-            columns: {},
-            charset: void 0,
-        };
-        const rows = sql.split('\n');
-
-        // TODO 解析旧表结构
-        return res;
-    };
-
-    const tryCreateTable =
-        tableManagedPolicy >= TableManagedPolicies.CREATE
-            ? (tableDefine: TableDefine) => {
-                  return dao.exec(genTableDefineSql(database, tableDefine));
-              }
-            : () => {
-                  // 啥也不干
-              };
-    const tryUpdateTable =
-        tableManagedPolicy >= TableManagedPolicies.CREATE
-            ? async (newTableDefine: TableDefine) => {
-                  const tableDefineSql = await getTable(newTableDefine.name);
-                  const oldTableDefine = parseTableDefineSql(tableDefineSql);
-                  console.info(oldTableDefine);
-                  // TODO 更新数据表结构
-              }
-            : () => {
-                  // 啥也不干
-              };
     const registRepository = async (tableDefine: TableDefine) => {
         const { name, ...rest } = tableDefine;
 
@@ -70,19 +21,32 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
             tableManagedPolicy >= TableManagedPolicies.CREATE
                 ? camel2underline(ENTITY_TABLE_NAME_PREFIX + upperFirstChar(name))
                 : name;
-        tableDefine = { name: tableName, ...rest };
+        tableDefine = normalrizeTableDefine({ name: tableName, ...rest });
 
         // 数据表托管
         if (tableManagedPolicy > TableManagedPolicies.MANUAL) {
+            tableDefine.columnDefines.unshift(defualtPrimaryKeyColumn);
+            tableDefine.columnDefines.push(defualtDelFlagColumn);
             (await hasTable(tableName)) ? await tryUpdateTable(tableDefine) : await tryCreateTable(tableDefine);
         }
 
         // 代理SQL执行
         const get = (id: Parameters<typeof dao.get>[1]) => dao.get(tableName, id);
         const create = (entity: Parameters<typeof dao.insert>[1]) => dao.insert(tableName, entity);
+        const update = async (entity: Parameters<typeof dao.update>[1]) => (await dao.update(tableName, entity)) === 1;
+        const select = async (condition: Parameters<typeof dao.select>[1]) => dao.select(tableName, condition);
+        const remove = async (id: Parameters<typeof dao.remove>[1]) => dao.remove(tableName, id);
+        const revoke = async (id: Parameters<typeof dao.revoke>[1]) => dao.revoke(tableName, id);
+        const exec = async (sql: Parameters<typeof dao.exec>[0], values: Parameters<typeof dao.exec>[1]) =>
+            dao.exec(sql, values);
         return {
             get,
             create,
+            update,
+            select,
+            remove,
+            revoke,
+            exec,
         };
     };
     return {

@@ -31,4 +31,4 @@ export const PRIMARY_KEY_COMMENT = '自增主键';
 /**
  * 自增主键字段注释
  */
-export const DEL_FLAG_COMMENT = '自增主键';
+export const DEL_FLAG_COMMENT = '逻辑删除标识';

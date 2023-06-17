@@ -1,5 +1,6 @@
 import type { PoolConfig } from 'mysql';
 import { useDao } from '../dao';
+import { Entity, ID } from '../defs';
 
 export interface WriteLogFunc {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,3 +30,4 @@ export interface ExecResult {
     protocol41: boolean;
     changedRows: number;
 }
+export type PK = Required<Entity>[typeof ID];

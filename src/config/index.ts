@@ -1,4 +1,4 @@
-import { ColumnType, DEL_FLAG_COMMENT, Entity, PRIMARY_KEY_COMMENT } from '../defs';
+import { ColumnType, DEL_FLAG, DEL_FLAG_COMMENT, Entity, ID, PRIMARY_KEY_COMMENT } from '../defs';
 import { ColumnDefine } from '../types';
 
 /**
@@ -62,6 +62,7 @@ export const getDefaultLength = (type: ColumnType) => {
  * 默认主键字段定义
  */
 export const defualtPrimaryKeyColumn = {
+    name: ID,
     type: ColumnType.INT,
     autoIncrement: true,
     primary: true,
@@ -73,6 +74,7 @@ export const defualtPrimaryKeyColumn = {
  * 默认逻辑删除标识字段定义
  */
 export const defualtDelFlagColumn = {
+    name: DEL_FLAG,
     type: ColumnType.BOOLEAN,
     required: true,
     defaultValue: String(Entity.NORMAL),
