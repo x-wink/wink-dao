@@ -1,3 +1,16 @@
+# [2.0.0](https://github.com/x-wink/wink-dao/compare/v1.0.3...v2.0.0) (2023-06-17)
+
+### Features
+
+-   `ORM`初始版本 ([df98b26](https://github.com/x-wink/wink-dao/commit/df98b26199278ac9c81644bd3d66a4e2648a7620))
+-   `useDao`暴露`config`和`logger` ([b700a60](https://github.com/x-wink/wink-dao/commit/b700a60002d9cde38d58f66ecfb9e61f4f255bad))
+-   自动更新数据表 ([446c0c3](https://github.com/x-wink/wink-dao/commit/446c0c33378924e5b353b5d146c9c160953dc7ca))
+
+### Performance Improvements
+
+-   `NoSuchTableError`获取表名 ([d1ef8ec](https://github.com/x-wink/wink-dao/commit/d1ef8ec8e7a5d5166aad271d2c93e358ba4d0f9f))
+-   重命名工具函数，添加示例注释 ([00d49b4](https://github.com/x-wink/wink-dao/commit/00d49b414bfe5557cc09e84b9ae1934a51e2a585))
+
 ## [1.0.3](https://github.com/x-wink/wink-dao/compare/v1.0.2...v1.0.3) (2023-05-26)
 
 ### Features
