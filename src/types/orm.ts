@@ -1,6 +1,7 @@
 import { ColumnType } from '../defs';
 
 export interface ColumnDefine {
+    name: string;
     type: ColumnType;
     autoIncrement?: boolean;
     length?: number | number[];
@@ -10,4 +11,8 @@ export interface ColumnDefine {
     comment?: string;
     defaultValue?: string;
 }
-export type TableDefine = Record<string, ColumnDefine>;
+export interface TableDefine {
+    name: string;
+    charset?: string;
+    columnDefines: ColumnDefine[];
+}
