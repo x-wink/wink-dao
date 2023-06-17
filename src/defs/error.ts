@@ -1,5 +1,6 @@
 import { PoolConfig } from 'mysql';
 import { DaoErrorInfo, DaoErrorType } from './enums';
+import { ExecInfo } from '../types';
 
 /**
  * Dao错误
@@ -39,8 +40,26 @@ export class InvalidTypeError extends DaoError<string> {
 /**
  * 数据表不存在错误
  */
+export class SqlSyntaxError extends DaoError<ExecInfo> {
+    constructor(info: ExecInfo, cuase?: unknown) {
+        super(DaoErrorType.SQL_SYNTAX_ERROR, DaoErrorInfo.SQL_SYNTAX_ERROR, info, cuase);
+    }
+}
+
+/**
+ * 数据表不存在错误
+ */
 export class NoSuchTableError extends DaoError<string> {
     constructor(name: string, cuase?: unknown) {
         super(DaoErrorType.NO_SUCH_TABLE, DaoErrorInfo.NO_SUCH_TABLE, name, cuase);
+    }
+}
+
+/**
+ * 数据表不存在错误
+ */
+export class UnhandleError extends DaoError<ExecInfo> {
+    constructor(info: ExecInfo, cuase?: unknown) {
+        super(DaoErrorType.UNHANDLE, DaoErrorInfo.UNHANDLE, info, cuase);
     }
 }

@@ -24,7 +24,7 @@ export const findAllTablesSql = 'show tables';
  * @param columnDefine 字段配置
  */
 export const genColumnDefineSql = (columnDefine: ColumnDefine) => {
-    const { name, type, length, autoIncrement, required = false, defaultValue, comment } = columnDefine;
+    const { name, type, length, autoIncrement, required, defaultValue, comment } = columnDefine;
     const isStr = [ColumnType.STRING, ColumnType.TEXT, ColumnType.JSON].includes(type);
     return `${secureName(name)} ${type}(${(length as number[]).join(',')})${autoIncrement ? ' unsigned' : ''}${
         required ? ' not null' : ''

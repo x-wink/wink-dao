@@ -31,3 +31,4 @@ export interface ExecResult {
     changedRows: number;
 }
 export type PK = Required<Entity>[typeof ID];
+export type ExecInfo = { sql: string; values?: unknown[] };
