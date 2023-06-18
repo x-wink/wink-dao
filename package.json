@@ -18,15 +18,15 @@
     "private": false,
     "files": [
         "dist",
-        "types"
+        "types/src"
     ],
     "main": "dist/index.mjs",
     "module": "dist/index.mjs",
-    "types": "types/index.d.ts",
+    "types": "types/src/index.d.ts",
     "browser": "dist/index.js",
     "exports": {
         ".": {
-            "types": "./types/index.d.ts",
+            "types": "./types/src/index.d.ts",
             "import": "./dist/index.mjs",
             "require": "./dist/index.cjs"
         }
