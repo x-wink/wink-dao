@@ -52,7 +52,7 @@ class Menu extends AutoIncrementEntity {
     }
 }
 // 配置Menu仓库
-const repository = await registRepository({
+const repository = registRepository({
     name: 'menu',
     columnDefiens: [
         {
@@ -83,6 +83,8 @@ const repository = await registRepository({
         },
     ],
 });
+// 实际应该在项目启动时初始化
+await repository.init.run();
 // 插入数据
 const id = await repository.create(new Menu({ code: 'test', name: '测试' }));
 // 主键查询
@@ -105,17 +107,17 @@ const result: ExecResult = await repository.exec('delete from menu where id = ?'
 
 ## 😉 TODO
 
--   [x] 新增`ORM`框架
--   [ ] 处理关联关系
--   [ ] 抽离`Mysql`耦合，改为插件形式
--   [ ] 支持适配多个数据库
--   [ ] 优化`DAO`基础能力
--   [ ] 封装分页查询等常用业务能力
--   [ ] 参考`JPA`实现通过函数名特殊命名规则生成复杂查询
--   [ ] 新增`vitepress`文档项目并完善文档
--   [ ] 新增`vitest`测试用例完善开发发布流程
--   [ ] 实现同步更新表结构（尝试了一下比想象中复杂）
--   [ ] 寻找伙（da）伴（lao）一起合作
+-   [x] 【feat-orm】新增`ORM`框架
+-   [ ] 【feat-relaction】处理关联关系（很复杂）
+-   [ ] 【refactor-plugin】抽离`Mysql`耦合，改为插件形式
+-   [ ] 【refactor-adapter】支持适配多种数据库
+-   [ ] 【perf-dao】优化`DAO`基础能力
+-   [ ] 【feat-business】封装分页查询等常用业务能力
+-   [ ] 【feat-generate】参考`JPA`实现通过函数名特殊命名规则生成复杂查询
+-   [ ] 【feat-docs】新增`vitepress`文档项目并完善文档
+-   [ ] 【refactor-test】改用`vitest`测试用例完善开发发布流程
+-   [ ] 【feat-update】实现同步更新表结构（尝试了一下比想象中复杂）
+-   [ ] 【chore】寻找伙（da）伴（lao）一起合作
 
 ## 🎯 框架依赖
 
