@@ -130,7 +130,7 @@ const result: ExecResult = await repository.exec('delete from menu where id = ?'
 
 ## 🤝 贡献
 
- 欢迎大家随时[点击这里](https://github.com/x-wink/wink-dao/issues)为我提供贡献、问题和功能建议 
+欢迎大家随时[点击这里](https://github.com/x-wink/wink-dao/issues)为我提供贡献、问题和功能建议
 
 ## 😘 感谢支持
 

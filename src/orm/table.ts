@@ -68,17 +68,19 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
             const uk = !col && row.match(REG_TABLE_DEFINE_UK);
             const pk = !uk && row.match(REG_TABLE_DEFINE_PKS);
             if (col) {
-                res.columnDefines.push({
-                    name: col[1],
-                    type: col[2] as ColumnType,
-                    length: +col[3],
-                    required: !!col[5],
-                    autoIncrement: !!col[6],
-                    defaultValue: col[8],
-                    comment: col[10],
-                    primary: false,
-                    unique: false,
-                });
+                res.columnDefines.push(
+                    normalrizeColumnDefine({
+                        name: col[1],
+                        type: col[2] as ColumnType,
+                        length: +col[4],
+                        required: !!col[6],
+                        autoIncrement: !!col[7],
+                        defaultValue: col[9],
+                        comment: col[11],
+                        primary: false,
+                        unique: false,
+                    })
+                );
             } else if (uk) {
                 res.columnDefines.find((item) => item.name === uk[2])!.unique = true;
             } else if (pk) {
@@ -111,14 +113,22 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
         if (normalrizeName) {
             name = camel2underline(name);
         }
-        // 统一长度格式，填充默认值
+        // 统一长度格式，填充类型默认长度，Date类型没有长度
         if (typeof length === 'number') {
             length = [length];
         }
         columnDefine.length ??= getDefaultLength(columnDefine.type);
-        // 统一布尔类型默认值
+        if (type === ColumnType.DATE) {
+            length = [];
+        }
+        // 统一默认值
         if (type === ColumnType.BOOLEAN) {
             defaultValue = String(+!!parseJavaScriptTypeValue(defaultValue));
+        } else {
+            defaultValue = String(parseJavaScriptTypeValue(defaultValue));
+            if (defaultValue === 'NULL') {
+                defaultValue = void 0;
+            }
         }
         // 校验自增字段数据类型
         if (columnDefine.autoIncrement && columnDefine.type !== ColumnType.INT) {
