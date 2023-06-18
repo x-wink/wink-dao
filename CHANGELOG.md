@@ -1,3 +1,9 @@
+## [2.0.2](https://github.com/x-wink/wink-dao/compare/v2.0.1...v2.0.2) (2023-06-18)
+
+### Bug Fixes
+
+-   外部化`mysql`依赖，减小打包体积 ([eb5f49a](https://github.com/x-wink/wink-dao/commit/eb5f49a76e756124834f4a12f3d16468d034770f))
+
 ## 2.0.1 (2023-06-18)
 
 ### Bug Fixes
