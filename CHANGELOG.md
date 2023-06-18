@@ -1,3 +1,15 @@
+## 2.0.1 (2023-06-18)
+
+### Bug Fixes
+
+-   `Date`类型字段生成定义 SQL 错误 ([9394c80](https://github.com/x-wink/wink-dao/commit/9394c809626bb05a3a43214b02433d171002b2b3))
+-   小问题修复，测试代码重构 ([1e2aad6](https://github.com/x-wink/wink-dao/commit/1e2aad68cc41ac9760c59633f1849e426d5c1b1a))
+
+### Features
+
+-   `ORM`初始版本 ([db23c36](https://github.com/x-wink/wink-dao/commit/db23c36a8632b4fc17e42f8e9d1beee448e919e2))
+-   dao ([9e970f2](https://github.com/x-wink/wink-dao/commit/9e970f2233653867806ff67f775c98ce515a3ee8))
+
 # [2.0.0](https://github.com/x-wink/wink-dao/compare/v1.0.3...v2.0.0) (2023-06-17)
 
 ### Features
