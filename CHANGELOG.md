@@ -1,3 +1,9 @@
+## [2.0.3](https://github.com/x-wink/wink-dao/compare/v2.0.2...v2.0.3) (2023-06-18)
+
+### Bug Fixes
+
+-   `d.ts`声明文件 ([4813f71](https://github.com/x-wink/wink-dao/commit/4813f7145eec007d35fc8369ce3d00b9ac426e51))
+
 ## [2.0.2](https://github.com/x-wink/wink-dao/compare/v2.0.1...v2.0.2) (2023-06-18)
 
 ### Bug Fixes
