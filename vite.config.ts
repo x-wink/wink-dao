@@ -30,6 +30,14 @@ export default (configEnv: ConfigEnv) => {
                 entry: resolvePath('./src/index.ts'),
                 name: packageJson.name.replace(/-(\w)/gi, (_, v) => v.toUpperCase()),
             },
+            rollupOptions: {
+                external: ['mysql'],
+                output: {
+                    globals: {
+                        mysql: 'mysql',
+                    },
+                },
+            },
         },
     } as UserConfig;
 };

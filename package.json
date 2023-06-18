@@ -40,7 +40,7 @@
         "prettier": "prettier --write ./**/*.{vue,ts,tsx,js,jsx,css,less,json,md,html}",
         "prepare": "husky install"
     },
-    "dependencies": {
+    "peerDependencies": {
         "mysql": "^2.18.1"
     },
     "devDependencies": {
