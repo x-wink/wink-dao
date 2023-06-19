@@ -1,9 +1,10 @@
 import { PoolConnection, createPool } from 'mysql';
 import { DEL_FLAG, Entity, ID, NoSuchTableError, SqlSyntaxError, UnhandleError } from '../defs';
 import { DaoOptions, ExecResult, PK } from '../types';
-import { camel2underline } from '../utils';
+import { camel2underline, parseConfig } from '../utils';
 export const useDao = (options: DaoOptions) => {
-    const { config, logger = console, debug = false, initSql } = options;
+    const { logger = console, debug = false, initSql } = options;
+    const config = parseConfig(options.config);
     const pool = createPool(config);
     const getConnection = (): Promise<PoolConnection> => {
         return new Promise((resolve, reject) => {

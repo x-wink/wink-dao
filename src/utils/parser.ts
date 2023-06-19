@@ -27,7 +27,8 @@ export const parseJavaScriptTypeValue = (value?: string) => {
 export const parseConfig = (config: MysqlConfig) => {
     let res: PoolConfig;
     if (typeof config === 'string') {
-        const [, user, password, host, port, database, query] = config.match(REG_CONNECTION_STR)!;
+        const [, user = 'root', password, host = 'localhost', port = '3306', database, query] =
+            config.match(REG_CONNECTION_STR)!;
         const rest = Object.fromEntries(
             (query ?? '')
                 .replace('?', '')
@@ -45,7 +46,8 @@ export const parseConfig = (config: MysqlConfig) => {
             }).map(([k, v]) => [k, parseJavaScriptTypeValue(v)])
         );
     } else {
-        res = config;
+        const { user = 'root', password, host = 'localhost', port = 3306, database, ...rest } = config;
+        res = { user, password, host, port, database, ...rest };
     }
     if ((['user', 'password', 'host', 'port', 'database'] as const).some((k) => typeof res[k] === 'undefined')) {
         throw new InvalidConfigError(res);
