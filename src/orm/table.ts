@@ -122,12 +122,14 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
             length = [];
         }
         // 统一默认值
-        if (type === ColumnType.BOOLEAN) {
-            defaultValue = String(+!!parseJavaScriptTypeValue(defaultValue));
-        } else {
-            defaultValue = String(parseJavaScriptTypeValue(defaultValue));
-            if (defaultValue === 'NULL') {
-                defaultValue = void 0;
+        if (typeof defaultValue !== 'undefined') {
+            if (type === ColumnType.BOOLEAN) {
+                defaultValue = String(+!!parseJavaScriptTypeValue(defaultValue));
+            } else {
+                defaultValue = String(parseJavaScriptTypeValue(defaultValue));
+                if (defaultValue === 'NULL') {
+                    defaultValue = void 0;
+                }
             }
         }
         // 校验自增字段数据类型
