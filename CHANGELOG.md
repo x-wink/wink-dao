@@ -1,3 +1,13 @@
+## [2.0.4](https://github.com/x-wink/wink-dao/compare/v2.0.3...v2.0.4) (2023-06-19)
+
+### Bug Fixes
+
+-   字段默认值导致创表 SQL 语法异常 ([d4588b3](https://github.com/x-wink/wink-dao/commit/d4588b3a9fd48047f2222200dfe7bd0cb77e47ce))
+
+### Performance Improvements
+
+-   调整解析配置时机，设置配置默认值，优化测试代码 ([a427329](https://github.com/x-wink/wink-dao/commit/a427329b0454e52195759feff3a183decdba3049))
+
 ## [2.0.3](https://github.com/x-wink/wink-dao/compare/v2.0.2...v2.0.3) (2023-06-18)
 
 ### Bug Fixes
