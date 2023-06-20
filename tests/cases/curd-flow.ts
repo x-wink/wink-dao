@@ -1,9 +1,10 @@
 /* eslint-disable no-console */
 import { compare, NoSuchTableError, SqlSyntaxError } from '../../src';
 import { User } from '../entity';
+import { init } from '../dao';
 import { userRepository } from '../repository';
 export default async () => {
-    await userRepository.init.run();
+    await init.run();
 
     const test = new User({ username: 'test', password: '123456' });
     const id = await userRepository.create(test);

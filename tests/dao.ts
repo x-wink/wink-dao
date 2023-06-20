@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import dotenv from 'dotenv';
-import { InvalidConfigError, useDao } from '../src';
+import { InvalidConfigError, useDao, useOrm, AutoTablePolicies } from '../src';
 dotenv.config({
     path: '.env.local',
 });
@@ -31,3 +31,7 @@ const createDao = () => {
     }
 };
 export const dao = createDao();
+
+export const { init, registRepository } = useOrm(dao, {
+    autoTablePolicy: AutoTablePolicies.UPDATE,
+});

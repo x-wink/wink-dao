@@ -1,3 +1,4 @@
+import { useOrm } from '../orm';
 import { ColumnType, RefrenceRelaction } from '../defs';
 
 export interface ColumnDefine {
@@ -22,3 +23,7 @@ export interface TableDefine {
     charset?: string;
     columnDefines: ColumnDefine[];
 }
+
+export type WinkOrm = ReturnType<typeof useOrm>;
+
+export type WinkRepository = ReturnType<WinkOrm['registRepository']>;

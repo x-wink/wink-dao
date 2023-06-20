@@ -1,7 +1,7 @@
 import { defualtDelFlagColumn, defualtPrimaryKeyColumn } from '../config';
-import { ENTITY_TABLE_NAME_PREFIX, Entity, AutoTablePolicies } from '../defs';
-import { ExecResult, TableDefine, WinkDao } from '../types';
-import { camel2underline, upperFirstChar, createAsyncInitFunc } from '../utils';
+import { Entity, AutoTablePolicies, AlreadyExistsError } from '../defs';
+import { ExecResult, TableDefine, WinkDao, WinkRepository } from '../types';
+import { createAsyncInitFunc, genForeignKeySql, genFieldIndexSql } from '../utils';
 import { useAutoTable } from './table';
 export interface OrmOptions {
     autoTablePolicy?: AutoTablePolicies;
@@ -10,30 +10,44 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
     const { autoTablePolicy = AutoTablePolicies.MANUAL } = options ?? {};
     const { config, logger, get, insert, update, select, remove, revoke, exec } = dao;
     const database = config.database!;
+    const enabledAutoTable = autoTablePolicy > AutoTablePolicies.MANUAL;
 
     const { hasTable, normalrizeColumnDefine, normalrizeTableDefine, tryCreateTable, tryUpdateTable } = useAutoTable(
         database,
         dao
     );
 
+    const tableDefines = new Map<string, TableDefine>();
+    const inits = new Map<string, ReturnType<typeof createAsyncInitFunc>>();
+    const repositories = new Map<string, WinkRepository>();
+
+    const init = createAsyncInitFunc(async () => {
+        // 初始化所有已注册仓库
+        await Promise.all([...inits.values()].map((init) => init.run()));
+        if (enabledAutoTable) {
+            // 创建外键字段的索引
+            // 有唯一索引就不创建，引用字段创建索引
+            const indexes = [...tableDefines.values()].flatMap((tableDefine) =>
+                genFieldIndexSql(database, tableDefine)
+            );
+            await Promise.all(indexes.map((item) => exec(item)));
+            // 创建外键约束
+            const fks = [...tableDefines.values()].flatMap((tableDefine) => genForeignKeySql(database, tableDefine));
+            await Promise.all(fks.map((item) => exec(item)));
+        }
+    });
+
     const registRepository = (tableDefine: TableDefine) => {
-        let { name } = tableDefine;
         if (autoTablePolicy === AutoTablePolicies.UPDATE) {
             // TODO 实现后删除警告
             logger.warn('同步更新表结构暂未实现，暂时只能使用CREATE策略');
         }
-        const enabledAutoTable = autoTablePolicy > AutoTablePolicies.MANUAL;
-        name = enabledAutoTable ? camel2underline(ENTITY_TABLE_NAME_PREFIX + upperFirstChar(name)) : name;
-        tableDefine = normalrizeTableDefine({ ...tableDefine, name }, enabledAutoTable);
+        tableDefine = normalrizeTableDefine(tableDefine, enabledAutoTable);
+        const { name, columnDefines } = tableDefine;
 
-        const init = createAsyncInitFunc(async () => {
-            // 数据表托管
-            if (autoTablePolicy > AutoTablePolicies.MANUAL) {
-                tableDefine.columnDefines.unshift(normalrizeColumnDefine(defualtPrimaryKeyColumn, enabledAutoTable));
-                tableDefine.columnDefines.push(normalrizeColumnDefine(defualtDelFlagColumn, enabledAutoTable));
-                (await hasTable(name)) ? await tryUpdateTable(tableDefine) : await tryCreateTable(tableDefine);
-            }
-        });
+        if (repositories.has(name)) {
+            throw new AlreadyExistsError({ key: 'name', value: name });
+        }
 
         // 代理SQL执行
         const getProxy = <T extends Entity>(id: Parameters<typeof get>[1]) => get<T>(name, id);
@@ -48,8 +62,9 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
             sql: Parameters<typeof exec>[0],
             values?: Parameters<typeof exec<T>>[1]
         ) => exec<T>(sql, values);
-        return {
-            init,
+
+        // 包装仓库
+        const repository = {
             get: getProxy,
             create: insertProxy,
             update: updateProxy,
@@ -58,8 +73,26 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
             revoke: revokeProxy,
             exec: execProxy,
         };
+
+        // 统一保存管理
+        tableDefines.set(name, tableDefine);
+        inits.set(
+            name,
+            createAsyncInitFunc(async () => {
+                // 数据表托管
+                if (enabledAutoTable) {
+                    columnDefines.unshift(normalrizeColumnDefine(defualtPrimaryKeyColumn, enabledAutoTable));
+                    columnDefines.push(normalrizeColumnDefine(defualtDelFlagColumn, enabledAutoTable));
+                    (await hasTable(name)) ? await tryUpdateTable(tableDefine) : await tryCreateTable(tableDefine);
+                }
+            })
+        );
+        repositories.set(name, repository);
+
+        return repository;
     };
     return {
+        init,
         registRepository,
     };
 };

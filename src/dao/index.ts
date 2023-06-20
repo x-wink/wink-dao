@@ -1,5 +1,5 @@
 import { PoolConnection, createPool } from 'mysql';
-import { DEL_FLAG, Entity, ID, NoSuchTableError, SqlSyntaxError, UnhandleError } from '../defs';
+import { DEL_FLAG, Entity, ID, InvalidForeignKeyError, NoSuchTableError, SqlSyntaxError, UnhandleError } from '../defs';
 import { DaoOptions, ExecResult, PK } from '../types';
 import { camel2underline, parseConfig } from '../utils';
 export const useDao = (options: DaoOptions) => {
@@ -37,7 +37,7 @@ export const useDao = (options: DaoOptions) => {
                 connection.query(sql, values, async (err, data) => {
                     connection.release();
                     if (err) {
-                        if (['ER_NO_SUCH_TABLE'].includes(err.code)) {
+                        if (err.code === 'ER_NO_SUCH_TABLE') {
                             const tableName = err.sqlMessage!.match(/Table '(.*?)'/)![1].split('.')[1];
                             if (initSql) {
                                 await init(initSql);
@@ -45,8 +45,10 @@ export const useDao = (options: DaoOptions) => {
                             } else {
                                 reject(new NoSuchTableError(tableName, err));
                             }
-                        } else if (['ER_PARSE_ERROR'].includes(err.code)) {
+                        } else if (err.code === 'ER_PARSE_ERROR') {
                             reject(new SqlSyntaxError({ sql, values }, err));
+                        } else if (err.code === 'ER_CANNOT_ADD_FOREIGN') {
+                            reject(new InvalidForeignKeyError(sql, err));
                         } else {
                             reject(new UnhandleError({ sql, values }, err));
                         }

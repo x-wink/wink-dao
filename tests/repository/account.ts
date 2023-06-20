@@ -1,8 +1,5 @@
-import { AutoTablePolicies, ColumnType, RefrenceRelaction, useOrm } from '../../src';
-import { dao } from '../dao';
-const { registRepository } = useOrm(dao, {
-    autoTablePolicy: AutoTablePolicies.UPDATE,
-});
+import { ColumnType, RefrenceRelaction } from '../../src';
+import { registRepository } from '../dao';
 export const accountRepository = registRepository({
     name: 'account',
     columnDefines: [

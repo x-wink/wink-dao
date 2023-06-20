@@ -38,6 +38,24 @@ export class InvalidTypeError extends DaoError<string> {
 }
 
 /**
+ * 已存在错误
+ */
+export class AlreadyExistsError extends DaoError<{ key: string; value: string }> {
+    constructor(data: { key: string; value: string }, cuase?: unknown) {
+        super(DaoErrorType.ALREADY_EXISTS, DaoErrorInfo.ALREADY_EXISTS, data, cuase);
+    }
+}
+
+/**
+ * 无效外键约束错误
+ */
+export class InvalidForeignKeyError extends DaoError<string> {
+    constructor(sql: string, cuase?: unknown) {
+        super(DaoErrorType.INVALID_FOREIGN_KEY, DaoErrorInfo.INVALID_FOREIGN_KEY, sql, cuase);
+    }
+}
+
+/**
  * 数据表不存在错误
  */
 export class SqlSyntaxError extends DaoError<ExecInfo> {

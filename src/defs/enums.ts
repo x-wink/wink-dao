@@ -11,6 +11,14 @@ export enum DaoErrorType {
      */
     INVALID_TYPE = 101,
     /**
+     * 已存在
+     */
+    ALREADY_EXISTS = 102,
+    /**
+     * 无效的外键
+     */
+    INVALID_FOREIGN_KEY = 103,
+    /**
      * SQL语法错误
      */
     SQL_SYNTAX_ERROR = 200,
@@ -36,6 +44,14 @@ export enum DaoErrorInfo {
      * 无效字段类型
      */
     INVALID_TYPE = '数据列类型错误',
+    /**
+     * 已存在
+     */
+    ALREADY_EXISTS = '存在重复定义',
+    /**
+     * 无效的外键
+     */
+    INVALID_FOREIGN_KEY = '无效的外键',
     /**
      * SQL语法错误
      */
