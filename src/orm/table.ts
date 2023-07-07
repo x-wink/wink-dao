@@ -113,17 +113,14 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
         let { name, length = getDefaultLength(type), defaultValue } = columnDefine;
         // 转换命名格式
         if (normalrizeName) {
-            name = normalrizeName ? camel2underline(name) : name;
+            name = camel2underline(name);
             if (columnDefine.refrence) {
                 const { table, field, joinTable } = columnDefine.refrence;
-                columnDefine.refrence.table = normalrizeName
-                    ? camel2underline(ENTITY_TABLE_NAME_PREFIX + upperFirstChar(table))
-                    : table;
-                columnDefine.refrence.field = normalrizeName ? camel2underline(field) : field;
-                columnDefine.refrence.joinTable =
-                    joinTable && normalrizeName
-                        ? camel2underline(ENTITY_TABLE_NAME_PREFIX + upperFirstChar(joinTable))
-                        : joinTable;
+                columnDefine.refrence.table = camel2underline(ENTITY_TABLE_NAME_PREFIX + upperFirstChar(table));
+                columnDefine.refrence.field = camel2underline(field);
+                columnDefine.refrence.joinTable = joinTable
+                    ? camel2underline(ENTITY_TABLE_NAME_PREFIX + upperFirstChar(joinTable))
+                    : joinTable;
             }
         }
         // 统一长度格式，填充类型默认长度，Date类型没有长度
