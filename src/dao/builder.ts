@@ -1,12 +1,10 @@
 import { joinSql, secureName } from '../utils';
 
-export abstract class SqlBuilder {
+export abstract class ISqlify {
     abstract toSql(): string;
-}
-export abstract class SqlBuilderWithValues extends SqlBuilder {
     abstract getValues(): unknown[];
 }
-export class Field implements SqlBuilder {
+export class Field implements ISqlify {
     private table?: string;
     private name: string;
     constructor(name = '*', table?: string) {
@@ -14,10 +12,13 @@ export class Field implements SqlBuilder {
         this.table = table;
     }
     toSql(): string {
-        return joinSql([secureName(this.table), secureName(this.name)], '.');
+        return joinSql([secureName(this.table), this.name === '*' ? this.name : secureName(this.name)], '.');
+    }
+    getValues(): unknown[] {
+        return [];
     }
 }
-export class Table implements SqlBuilder {
+export class Table implements ISqlify {
     private alias?: string;
     private name: string;
     constructor(name: string, alias?: string) {
@@ -27,6 +28,9 @@ export class Table implements SqlBuilder {
     toSql(): string {
         return joinSql([secureName(this.name), secureName(this.alias)], ' as ');
     }
+    getValues(): unknown[] {
+        return [];
+    }
 }
 export enum JoinTableType {
     PRIMARY = 'from',
@@ -35,10 +39,10 @@ export enum JoinTableType {
     INNER = 'inner join',
     FULL = 'full join',
 }
-export class JoinTable extends Table {
+export class JoinTable extends Table implements ISqlify {
     private joinType: JoinTableType;
-    private condition?: Condition;
-    constructor(name: string, alias?: string, joinType = JoinTableType.INNER, condition?: Condition) {
+    private condition?: ConditionBuilder;
+    constructor(name: string, alias?: string, condition?: ConditionBuilder, joinType = JoinTableType.INNER) {
         super(name, alias);
         this.joinType = joinType;
         this.condition = condition;
@@ -54,6 +58,9 @@ export class JoinTable extends Table {
             ],
             false
         );
+    }
+    getValues(): unknown[] {
+        return this.condition?.getValues() ?? [];
     }
 }
 // TODO 支持单字符模糊匹配
@@ -78,7 +85,7 @@ export enum LogicOperator {
     And = 'and',
     Or = 'or',
 }
-export class ConditionItem implements SqlBuilderWithValues {
+export class ConditionItem implements ISqlify {
     private field: Field;
     private operator: ConditionOperator;
     private value: unknown;
@@ -134,26 +141,9 @@ export class ConditionItem implements SqlBuilderWithValues {
         return this.value instanceof Array ? this.value : [this.value];
     }
 }
-export class Condition implements SqlBuilderWithValues {
-    private children = [] as (ConditionItem | Condition)[];
-    private logic: LogicOperator;
-    constructor(logic: LogicOperator = LogicOperator.And) {
-        this.logic = logic;
-    }
-    toSql(): string {
-        return joinSql(
-            this.children.map((item) => (item instanceof Condition ? `( ${item.toSql()} )` : item.toSql())),
-            ` ${this.logic} `,
-            false
-        );
-    }
-    getValues(): unknown[] {
-        return this.children.flatMap((item) => item.getValues());
-    }
-}
-export class GroupBy implements SqlBuilderWithValues {
+export class GroupBy implements ISqlify {
     private fields = [] as Field[];
-    private condition?: Condition;
+    private condition?: ConditionBuilder;
     toSql(): string {
         return joinSql(
             [
@@ -175,7 +165,7 @@ export enum OrderSort {
     ASC = 'asc',
     DESC = 'desc',
 }
-export class OrderBy implements SqlBuilder {
+export class OrderBy implements ISqlify {
     private field: Field;
     private sort: OrderSort;
     constructor(field: Field, sort: OrderSort = OrderSort.ASC) {
@@ -185,8 +175,11 @@ export class OrderBy implements SqlBuilder {
     toSql(): string {
         return joinSql([this.field.toSql(), this.sort], false);
     }
+    getValues(): unknown[] {
+        return [];
+    }
 }
-export class Limit implements SqlBuilderWithValues {
+export class Limit implements ISqlify {
     private start: number;
     private end: number;
     constructor(start: number, end: number) {
@@ -208,7 +201,11 @@ export class Limit implements SqlBuilderWithValues {
 export interface ConditionFunction {
     (): boolean;
 }
-export class SelectBuilder implements SqlBuilder {
+export abstract class ISqlBuilder extends ISqlify {
+    abstract notEmpty(): boolean;
+    abstract reset(): ThisType<this>;
+}
+export class SelectBuilder implements ISqlBuilder {
     private fields = [] as Field[];
     select(field?: string, table?: string, condition?: ConditionFunction) {
         if (!condition || condition()) {
@@ -217,6 +214,9 @@ export class SelectBuilder implements SqlBuilder {
         return this;
     }
     toSql(): string {
+        if (!this.fields.length) {
+            this.select();
+        }
         return joinSql(
             [
                 'select',
@@ -229,8 +229,18 @@ export class SelectBuilder implements SqlBuilder {
             false
         );
     }
+    getValues(): unknown[] {
+        return [];
+    }
+    notEmpty(): boolean {
+        return this.fields.length > 0;
+    }
+    reset() {
+        this.fields = [];
+        return this;
+    }
 }
-export class TableBuilder implements SqlBuilder {
+export class TableBuilder implements ISqlBuilder {
     private tables = [] as JoinTable[];
     constructor(table: string, alias?: string) {
         this.from(table, alias);
@@ -238,29 +248,29 @@ export class TableBuilder implements SqlBuilder {
     private join(
         table: string,
         alias?: string,
+        on?: ConditionBuilder,
         joinType?: JoinTableType,
-        on?: Condition,
         condition?: ConditionFunction
     ) {
         if (!condition || condition()) {
-            this.tables.push(new JoinTable(table, alias, joinType, on));
+            this.tables.push(new JoinTable(table, alias, on, joinType));
         }
         return this;
     }
     private from(table: string, alias?: string) {
-        return this.join(table, alias, JoinTableType.PRIMARY);
+        return this.join(table, alias, void 0, JoinTableType.PRIMARY);
     }
-    innerJoin(table: string, alias?: string, on?: Condition, condition?: ConditionFunction) {
-        return this.join(table, alias, JoinTableType.INNER, on, condition);
+    innerJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+        return this.join(table, alias, on, JoinTableType.INNER, condition);
     }
-    leftJoin(table: string, alias?: string, on?: Condition, condition?: ConditionFunction) {
-        return this.join(table, alias, JoinTableType.LEFT, on, condition);
+    leftJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+        return this.join(table, alias, on, JoinTableType.LEFT, condition);
     }
-    rightJoin(table: string, alias?: string, on?: Condition, condition?: ConditionFunction) {
-        return this.join(table, alias, JoinTableType.RIGHT, on, condition);
+    rightJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+        return this.join(table, alias, on, JoinTableType.RIGHT, condition);
     }
-    fullJoin(table: string, alias?: string, on?: Condition, condition?: ConditionFunction) {
-        return this.join(table, alias, JoinTableType.FULL, on, condition);
+    fullJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+        return this.join(table, alias, on, JoinTableType.FULL, condition);
     }
     toSql(): string {
         return joinSql(
@@ -268,17 +278,62 @@ export class TableBuilder implements SqlBuilder {
             false
         );
     }
+    getValues(): unknown[] {
+        return this.tables.flatMap((item) => item.getValues());
+    }
+    reset() {
+        this.tables = [this.tables[0]];
+        return this;
+    }
+    notEmpty(): boolean {
+        return this.tables.length > 0;
+    }
 }
-export class QueryBuilder implements SqlBuilderWithValues {
+export class ConditionBuilder implements ISqlBuilder {
+    private conditions = [] as ISqlify[];
+    private logic: LogicOperator;
+    constructor(logic: LogicOperator = LogicOperator.And) {
+        this.logic = logic;
+    }
+    nest() {
+        const nest = new ConditionBuilder();
+        this.conditions.push(nest);
+        return nest;
+    }
+    is(field: Field, value: unknown, condition?: ConditionFunction) {
+        if (!condition || condition()) {
+            this.conditions.push(new ConditionItem(field, ConditionOperator.Equal, value));
+        }
+    }
+    toSql(): string {
+        return joinSql(
+            this.conditions.map((item) => (item instanceof ConditionBuilder ? `( ${item.toSql()} )` : item.toSql())),
+            ` ${this.logic} `,
+            false
+        );
+    }
+    getValues(): unknown[] {
+        return this.conditions.flatMap((item) => item.getValues());
+    }
+    reset() {
+        this.conditions = [];
+        return this;
+    }
+    notEmpty(): boolean {
+        return this.conditions.length > 0;
+    }
+}
+export class QueryBuilder implements ISqlBuilder {
     private selectBuilder: SelectBuilder;
     private tableBuilder: TableBuilder;
-    private conditions?: Condition;
+    private whereBuilder: ConditionBuilder;
     private groupBy?: GroupBy;
     private orderBy?: OrderBy[];
     private limit?: Limit;
-    constructor(table: string) {
+    constructor(table: string, alias?: string) {
         this.selectBuilder = new SelectBuilder();
-        this.tableBuilder = new TableBuilder(table);
+        this.tableBuilder = new TableBuilder(table, alias);
+        this.whereBuilder = new ConditionBuilder();
     }
     // 代理SelectBuilder
     select(field?: string, table?: string, condition?: ConditionFunction) {
@@ -286,27 +341,36 @@ export class QueryBuilder implements SqlBuilderWithValues {
         return this;
     }
     // 代理TableBuilder
-    innerJoin(table: string, alias?: string, on?: Condition, condition?: ConditionFunction) {
+    innerJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
         this.tableBuilder.innerJoin(table, alias, on, condition);
         return this;
     }
-    leftJoin(table: string, alias?: string, on?: Condition, condition?: ConditionFunction) {
+    leftJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
         this.tableBuilder.leftJoin(table, alias, on, condition);
         return this;
     }
-    rightJoin(table: string, alias?: string, on?: Condition, condition?: ConditionFunction) {
+    rightJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
         this.tableBuilder.rightJoin(table, alias, on, condition);
         return this;
     }
-    fullJoin(table: string, alias?: string, on?: Condition, condition?: ConditionFunction) {
+    fullJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
         this.tableBuilder.fullJoin(table, alias, on, condition);
         return this;
     }
-    // 实现SqlBuilderWithValues
+    // 实现ISqlBuilder
     toSql(): string {
-        return [this.selectBuilder.toSql(), this.tableBuilder.toSql()].filter(Boolean).join(' ');
+        return joinSql([this.selectBuilder.toSql(), this.tableBuilder.toSql(), this.whereBuilder.toSql()]);
     }
     getValues(): unknown[] {
-        return [];
+        return [...this.tableBuilder.getValues()];
+    }
+    reset() {
+        this.selectBuilder.reset();
+        this.tableBuilder.reset();
+        this.whereBuilder.reset();
+        return this;
+    }
+    notEmpty(): boolean {
+        return this.selectBuilder.notEmpty() && this.tableBuilder.notEmpty() && this.whereBuilder.notEmpty();
     }
 }
