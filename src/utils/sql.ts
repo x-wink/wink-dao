@@ -6,7 +6,37 @@ import { ColumnType } from '../defs';
  * 获取使用反引号包裹的名称，防止名称为数据库保留关键字
  * @example secureName('name') === '`name`'
  */
-export const secureName = (name: string) => `\`${name}\``;
+export const secureName = (name?: string) => (name ? `\`${name}\`` : '');
+
+/**
+ * 使用空格拼接SQL，忽略空字符串
+ * @param parts SQL片段
+ */
+export function joinSql(parts: string[]): string;
+/**
+ * 拼接SQL，忽略空字符串，默认使用空格拼接
+ * @param parts SQL片段
+ * @param step 连接符
+ */
+export function joinSql(parts: string[], step: string): string;
+/**
+ * 使用空格拼接SQL，默认忽略空字符串
+ * @param parts SQL片段
+ * @param ignoreEmpty 是否忽略空字符串，默认true
+ */
+export function joinSql(parts: string[], ignoreEmpty: boolean): string;
+/**
+ * 拼接SQL，默认使用空格拼接，默认忽略空字符串
+ * @param parts SQL片段
+ * @param step 连接符，默认使用空格
+ * @param ignoreEmpty 是否忽略空字符串，默认true
+ */
+export function joinSql(parts: string[], step: string, ignoreEmpty: boolean): string;
+export function joinSql(parts: string[], stepOrIgnroeEmpty: string | boolean = ' ', ignoreEmpty = true) {
+    return (ignoreEmpty && stepOrIgnroeEmpty !== false ? parts.filter(Boolean) : parts).join(
+        typeof stepOrIgnroeEmpty === 'string' ? stepOrIgnroeEmpty : ' '
+    );
+}
 
 /**
  * 获取查询数据表定义的SQL
