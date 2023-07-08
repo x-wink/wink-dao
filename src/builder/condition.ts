@@ -44,6 +44,10 @@ export enum ConditionOperator {
      */
     EndsWith = 'endsWith',
     /**
+     * 单字符模糊查询，需要在value中传入通配符，value改成数组，第一个元素使通配符，第二个元素是真正的参数
+     */
+    Match = 'match',
+    /**
      * 枚举范围内
      */
     In = 'in',
@@ -88,7 +92,23 @@ export class Condition implements ISqlify {
     private field: Field;
     private operator: ConditionOperator;
     private value: unknown;
+    private placeholder?: string;
     constructor(field: Field, operator: ConditionOperator, value: unknown) {
+        if (operator === ConditionOperator.Match) {
+            // TODO 有没有办法只用TS的类型推断实现operator是ConditionOperator.Match时value的类型不一样
+            if (!Array.isArray(value) || value.length !== 2) {
+                throw new Error(
+                    '使用 ConditionOperator.Match 时 value 必须为只有两个元素的数组！第一个元素为参数占位符字符串，第二个元素为实际参数值。'
+                );
+            }
+            const temp = value as [string, unknown];
+            this.placeholder = temp[0];
+            value = temp[1];
+            if (!this.placeholder.match(/[_%]/g)?.length) {
+                // eslint-disable-next-line no-console
+                console.warn('使用 ConditionOperator.Match 时，参数占位符中没有包含通配符[_%]！');
+            }
+        }
         this.field = field;
         this.operator = operator;
         this.value = value;
@@ -103,7 +123,6 @@ export class Condition implements ISqlify {
             // 字段比较，例如在on子句中作为表连接条件时
             placeholder = this.value.toSql();
         } else {
-            // TODO 支持单字符模糊匹配
             switch (this.operator) {
                 case ConditionOperator.Equal:
                 case ConditionOperator.NotEqual:
@@ -124,6 +143,9 @@ export class Condition implements ISqlify {
                     break;
                 case ConditionOperator.Like:
                     placeholder = `concat('%', ?, '%')`;
+                    break;
+                case ConditionOperator.Match:
+                    placeholder = this.placeholder!;
                     break;
                 case ConditionOperator.In:
                 case ConditionOperator.NotIn:
@@ -147,6 +169,7 @@ export class Condition implements ISqlify {
         const map = {
             [ConditionOperator.StartsWith]: ConditionOperator.Like,
             [ConditionOperator.EndsWith]: ConditionOperator.Like,
+            [ConditionOperator.Match]: ConditionOperator.Like,
         } as Record<ConditionOperator, ConditionOperator>;
         return concatSql([this.field.toSql(), this.operator in map ? map[this.operator] : this.operator, placeholder]);
     }
