@@ -37,6 +37,26 @@ export function concatSql(parts: string[], stepOrIgnroeEmpty: string | boolean =
         typeof stepOrIgnroeEmpty === 'string' ? stepOrIgnroeEmpty : ' '
     );
 }
+/**
+ * 解析名字和别名
+ * @param express sql名称表达式
+ */
+export const parseAliasExpress = (express: string) => {
+    let arr = express.split(/\s+as\s+/),
+        name = express,
+        alias;
+    if (arr.length > 1) {
+        name = arr[0];
+        alias = arr[1];
+    } else {
+        arr = express.split(/\s+/);
+        if (arr.length > 1) {
+            name = arr[0];
+            alias = arr[1];
+        }
+    }
+    return { name, alias };
+};
 
 /**
  * 获取查询数据表定义的SQL

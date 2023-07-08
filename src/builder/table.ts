@@ -1,12 +1,12 @@
 import { OnBuilder } from './core';
-import { concatSql, secureName } from '../utils';
+import { concatSql, parseAliasExpress, secureName } from '../utils';
 import { ISqlify } from './base';
 /**
  * 数据表
  */
 export class Table implements ISqlify {
-    private alias?: string;
-    private name: string;
+    protected alias?: string;
+    protected name: string;
     /**
      * @param name 表名
      * @param alias 别名
@@ -14,6 +14,10 @@ export class Table implements ISqlify {
     constructor(name: string, alias?: string) {
         this.name = name;
         this.alias = alias;
+    }
+    static parse(express: string) {
+        const { name, alias } = parseAliasExpress(express);
+        return new Table(name, alias);
     }
     toSql(): string {
         return concatSql([secureName(this.name), secureName(this.alias)], ' as ');

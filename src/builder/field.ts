@@ -1,4 +1,4 @@
-import { concatSql, secureName } from '../utils';
+import { concatSql, parseAliasExpress, secureName } from '../utils';
 import { ISqlify } from './base';
 /**
  * 字段
@@ -24,23 +24,11 @@ export class Field implements ISqlify {
      * @example Field.parse('u.name u_name') // new Field('name', 'u_name', 'u')
      */
     static parse(express = '*') {
-        let arr = express.split('.');
-        let name = arr[1] ?? express,
-            alias;
+        const { name, alias } = parseAliasExpress(express);
+        const arr = name.split('.');
+        const field = arr[1] ?? express;
         const table = arr.length > 1 ? arr[0] : void 0;
-
-        arr = name.split(/\s+as\s+/);
-        if (arr.length > 1) {
-            name = arr[0];
-            alias = arr[1];
-        } else {
-            arr = name.split(/\s+/);
-            if (arr.length > 1) {
-                name = arr[0];
-                alias = arr[1];
-            }
-        }
-        return new Field(name, alias, table);
+        return new Field(field, alias, table);
     }
     toSql(): string {
         return concatSql([

@@ -18,8 +18,7 @@ export default async () => {
     query
         .reset()
         .from('user', 'u')
-        .select('u.*')
-        .select('r.*')
+        .select('u.*', 'r.*')
         .innerJoin('role', 'r', new OnBuilder().equal('u.roleId', Field.parse('r.id')));
     console.info(query.toSql());
 
