@@ -1,3 +1,4 @@
+import { QueryBuilder } from '.';
 import { concatSql } from '../utils';
 /**
  * 可转换为SQL语句对象接口
@@ -24,7 +25,9 @@ export abstract class SqlBuilder<T extends ISqlify> extends ISqlify {
      * SQL参数列表
      */
     getValues(): unknown[] {
-        return this.children.flatMap((item) => item.getValues());
+        return this.children
+            .flatMap((item) => item.getValues())
+            .flatMap((item) => (item instanceof QueryBuilder ? item.getValues() : item));
     }
     /**
      * 重置所有状态

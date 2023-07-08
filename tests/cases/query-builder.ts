@@ -41,5 +41,8 @@ export default async () => {
     query.reset().from('user').page(2, 10);
     console.info(query.toSql());
     console.info(query.getValues());
-    // TODO 复杂子查询
+    // 复杂子查询
+    query.reset().from('user').in('role_id', new QueryBuilder().select('id').from('role').eqaul('code', 'admin'));
+    console.info(query.toSql());
+    console.info(query.getValues());
 };
