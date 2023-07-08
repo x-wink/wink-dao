@@ -403,6 +403,11 @@ export class GroupByBuilder extends SqlBuilder<Field> {
               )
             : '';
     }
+    reset() {
+        super.reset();
+        this.condition?.reset();
+        return this;
+    }
     getValues(): unknown[] {
         return this.condition?.getValues() ?? [];
     }
@@ -427,13 +432,21 @@ export class OrderByBuilder extends SqlBuilder<OrderBy> {
             : '';
     }
 }
+export class LimitBuilder extends SqlBuilder<Limit> {
+    limit(start: number, end: number) {
+        this.children[0] = new Limit(start, end);
+    }
+    page(pageNo: number, pageSize: number) {
+        this.children[0] = Limit.page(pageNo, pageSize);
+    }
+}
 export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
     private selectBuilder: SelectBuilder;
     private tableBuilder: TableBuilder;
     private whereBuilder: WhereBuilder;
     private groupByBuilder: GroupByBuilder;
     private orderByBuilder: OrderByBuilder;
-    private limit?: Limit;
+    private limitBuilder: LimitBuilder;
     constructor(table: string, alias?: string) {
         super();
         this.selectBuilder = new SelectBuilder();
@@ -441,12 +454,14 @@ export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
         this.whereBuilder = new WhereBuilder();
         this.groupByBuilder = new GroupByBuilder();
         this.orderByBuilder = new OrderByBuilder();
+        this.limitBuilder = new LimitBuilder();
         this.children = [
             this.selectBuilder,
             this.tableBuilder,
             this.whereBuilder,
             this.groupByBuilder,
             this.orderByBuilder,
+            this.limitBuilder,
         ];
     }
     // 代理SelectBuilder
@@ -551,6 +566,13 @@ export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
     orderBy(field: string, table?: string, direction = OrderByDirection.ASC, condition?: ConditionFunction) {
         this.orderByBuilder.orderBy(field, table, direction, condition);
         return this;
+    }
+    // 代理LimitBuilder
+    limit(start: number, end: number) {
+        this.limitBuilder.limit(start, end);
+    }
+    page(pageNo: number, pageSize: number) {
+        this.limitBuilder.page(pageNo, pageSize);
     }
     // 覆盖SqlBuilder
     reset() {
