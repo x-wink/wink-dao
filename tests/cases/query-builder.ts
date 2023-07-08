@@ -16,6 +16,7 @@ export default async () => {
     query.reset().select('*', 'u').select('*', 'r').innerJoin('role', 'r');
     console.info(query.toSql());
 
-    query.reset();
+    query.reset().or().like('name', '文').startsWith('name', '向').endsWith('name', '可');
     console.info(query.toSql());
+    console.info(query.getValues());
 };

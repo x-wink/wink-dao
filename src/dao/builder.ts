@@ -8,8 +8,14 @@ export class Field implements ISqlify {
     private table?: string;
     private name: string;
     constructor(name = '*', table?: string) {
-        this.name = name;
-        this.table = table;
+        if (table) {
+            this.name = name;
+            this.table = table;
+        } else {
+            const arr = name.split('.');
+            this.name = arr[1] ?? name;
+            this.table = arr.length > 1 ? arr[0] : void 0;
+        }
     }
     toSql(): string {
         return joinSql([secureName(this.table), this.name === '*' ? this.name : secureName(this.name)], '.');
@@ -41,8 +47,8 @@ export enum JoinTableType {
 }
 export class JoinTable extends Table implements ISqlify {
     private joinType: JoinTableType;
-    private condition?: ConditionBuilder;
-    constructor(name: string, alias?: string, condition?: ConditionBuilder, joinType = JoinTableType.INNER) {
+    private condition?: OnBuilder;
+    constructor(name: string, alias?: string, condition?: OnBuilder, joinType = JoinTableType.INNER) {
         super(name, alias);
         this.joinType = joinType;
         this.condition = condition;
@@ -52,9 +58,7 @@ export class JoinTable extends Table implements ISqlify {
             [
                 this.joinType,
                 super.toSql(),
-                this.joinType !== JoinTableType.PRIMARY && this.condition
-                    ? joinSql(['on', this.condition.toSql()], false)
-                    : '',
+                this.joinType !== JoinTableType.PRIMARY && this.condition ? this.condition.toSql() : '',
             ],
             false
         );
@@ -72,8 +76,8 @@ export enum ConditionOperator {
     LessThan = '<',
     LessThanOrEqual = '<=',
     Like = 'like',
-    StartsWith = 'like',
-    EndsWith = 'like',
+    StartsWith = 'startsWith',
+    EndsWith = 'endsWith',
     In = 'in',
     NotIn = 'not in',
     IsNull = 'is null',
@@ -113,13 +117,13 @@ export class Condition implements ISqlify {
                 case ConditionOperator.IsNotNull:
                     break;
                 case ConditionOperator.StartsWith:
-                    placeholder = `?%`;
+                    placeholder = `concat(?, '%')`;
                     break;
                 case ConditionOperator.EndsWith:
-                    placeholder = `%?`;
+                    placeholder = `concat('%', ?)`;
                     break;
                 case ConditionOperator.Like:
-                    placeholder = `%?%`;
+                    placeholder = `concat('%', ?, '%')`;
                     break;
                 case ConditionOperator.In:
                 case ConditionOperator.NotIn:
@@ -139,7 +143,11 @@ export class Condition implements ISqlify {
                     break;
             }
         }
-        return joinSql([this.field.toSql(), this.operator, placeholder]);
+        const map = {
+            [ConditionOperator.StartsWith]: ConditionOperator.Like,
+            [ConditionOperator.EndsWith]: ConditionOperator.Like,
+        } as Record<ConditionOperator, ConditionOperator>;
+        return joinSql([this.field.toSql(), this.operator in map ? map[this.operator] : this.operator, placeholder]);
     }
     getValues(): unknown[] {
         return [
@@ -208,7 +216,7 @@ export class Limit implements ISqlify {
 export interface ConditionFunction {
     (): boolean;
 }
-export abstract class SqlBuilder<T> extends ISqlify {
+export abstract class SqlBuilder<T extends ISqlify> extends ISqlify {
     protected children: T[] = [];
     protected notEmpty() {
         return this.children.length > 0;
@@ -217,12 +225,13 @@ export abstract class SqlBuilder<T> extends ISqlify {
         this.children = [];
         return this;
     }
+    getValues(): unknown[] {
+        return this.children.flatMap((item) => item.getValues());
+    }
 }
 export class SelectBuilder extends SqlBuilder<Field> {
     select(field?: string, table?: string, condition?: ConditionFunction) {
-        if (!condition || condition()) {
-            this.children.push(new Field(field, table));
-        }
+        condition?.() !== false && this.children.push(new Field(field, table));
         return this;
     }
     toSql(): string {
@@ -253,28 +262,26 @@ export class TableBuilder extends SqlBuilder<JoinTable> {
     private join(
         table: string,
         alias?: string,
-        on?: ConditionBuilder,
+        on?: OnBuilder,
         joinType?: JoinTableType,
         condition?: ConditionFunction
     ) {
-        if (!condition || condition()) {
-            this.children.push(new JoinTable(table, alias, on, joinType));
-        }
+        condition?.() !== false && this.children.push(new JoinTable(table, alias, on, joinType));
         return this;
     }
     private from(table: string, alias?: string) {
         return this.join(table, alias, void 0, JoinTableType.PRIMARY);
     }
-    innerJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+    innerJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         return this.join(table, alias, on, JoinTableType.INNER, condition);
     }
-    leftJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+    leftJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         return this.join(table, alias, on, JoinTableType.LEFT, condition);
     }
-    rightJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+    rightJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         return this.join(table, alias, on, JoinTableType.RIGHT, condition);
     }
-    fullJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+    fullJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         return this.join(table, alias, on, JoinTableType.FULL, condition);
     }
     toSql(): string {
@@ -283,48 +290,124 @@ export class TableBuilder extends SqlBuilder<JoinTable> {
             false
         );
     }
-    getValues(): unknown[] {
-        return this.children.flatMap((item) => item.getValues());
-    }
 }
+export type ConditionKeyword = 'where' | 'on' | 'having' | '';
 export class ConditionBuilder extends SqlBuilder<ConditionBuilder | Condition> {
-    private logic: LogicOperator;
-    constructor(logic: LogicOperator = LogicOperator.And) {
+    private keyword: ConditionKeyword;
+    protected logic: LogicOperator;
+    constructor(keyword: ConditionKeyword = '', logic: LogicOperator = LogicOperator.And) {
         super();
+        this.keyword = keyword;
         this.logic = logic;
     }
-    nest() {
-        const nest = new ConditionBuilder();
-        this.children.push(nest);
+    private nest(logic = LogicOperator.And) {
+        let nest;
+        if (this.notEmpty()) {
+            nest = new ConditionBuilder(void 0, logic);
+            this.children.push(nest);
+        } else {
+            this.logic = logic;
+            nest = this;
+        }
         return nest;
     }
-    is(field: Field, value: unknown, condition?: ConditionFunction) {
-        if (!condition || condition()) {
-            this.children.push(new Condition(field, ConditionOperator.Equal, value));
-        }
+    /**
+     * 构建并返回一个新的嵌套条件交集
+     * @description 注意：这里的and表示嵌套内的条件都是and，当前条件与嵌套条件的逻辑由当前条件的逻辑决定
+     */
+    and() {
+        return this.nest();
     }
-    toSql(): string {
-        return joinSql(
-            this.children.map((item) => (item instanceof ConditionBuilder ? `( ${item.toSql()} )` : item.toSql())),
-            ` ${this.logic} `,
-            false
-        );
+    /**
+     * 构建并返回一个新的嵌套条件并集
+     * @description 注意：这里的or表示嵌套内的条件都是or，当前条件与嵌套条件的逻辑由当前条件的逻辑决定
+     */
+    or() {
+        return this.nest(LogicOperator.Or);
     }
-    getValues(): unknown[] {
-        return this.children.flatMap((item) => item.getValues());
-    }
-    reset() {
-        this.children = [];
+    private where(type: ConditionOperator, field: string, value: unknown, condition?: ConditionFunction) {
+        condition?.() !== false && this.children.push(new Condition(new Field(field), type, value));
         return this;
     }
-    notEmpty(): boolean {
-        return this.children.length > 0;
+    equal(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.Equal, field, value, condition);
+    }
+    notEqual(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.NotEqual, field, value, condition);
+    }
+    gt(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.GreaterThan, field, value, condition);
+    }
+    gte(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.GreaterThanOrEqual, field, value, condition);
+    }
+    lt(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.LessThan, field, value, condition);
+    }
+    lte(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.LessThanOrEqual, field, value, condition);
+    }
+    like(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.Like, field, value, condition);
+    }
+    startsWith(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.StartsWith, field, value, condition);
+    }
+    endsWith(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.EndsWith, field, value, condition);
+    }
+    in(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.In, field, value, condition);
+    }
+    notIn(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.NotIn, field, value, condition);
+    }
+    isNull(field: string, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.IsNull, field, void 0, condition);
+    }
+    notNull(field: string, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.IsNotNull, field, void 0, condition);
+    }
+    between(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.Between, field, value, condition);
+    }
+    notBetween(field: string, value: unknown, condition?: ConditionFunction) {
+        return this.where(ConditionOperator.NotBetween, field, value, condition);
+    }
+    toSql(): string {
+        return this.notEmpty()
+            ? joinSql([
+                  this.keyword,
+                  joinSql(
+                      this.children.map((item) =>
+                          item instanceof ConditionBuilder ? `( ${item.toSql()} )` : item.toSql()
+                      ),
+                      ` ${this.logic} `,
+                      false
+                  ),
+              ])
+            : '';
+    }
+}
+export class OnBuilder extends ConditionBuilder {
+    constructor(logic: LogicOperator = LogicOperator.And) {
+        super('on', logic);
+    }
+}
+export class WhereBuilder extends ConditionBuilder {
+    constructor(logic: LogicOperator = LogicOperator.And) {
+        super('where', logic);
+    }
+}
+export class HavingBuilder extends ConditionBuilder {
+    constructor(logic: LogicOperator = LogicOperator.And) {
+        super('having', logic);
     }
 }
 export class QueryBuilder extends SqlBuilder<never> {
     private selectBuilder: SelectBuilder;
     private tableBuilder: TableBuilder;
-    private whereBuilder: ConditionBuilder;
+    private whereBuilder: WhereBuilder;
     private groupBy?: GroupBy;
     private orderBy?: OrderBy[];
     private limit?: Limit;
@@ -332,7 +415,7 @@ export class QueryBuilder extends SqlBuilder<never> {
         super();
         this.selectBuilder = new SelectBuilder();
         this.tableBuilder = new TableBuilder(table, alias);
-        this.whereBuilder = new ConditionBuilder();
+        this.whereBuilder = new WhereBuilder();
     }
     // 代理SelectBuilder
     select(field?: string, table?: string, condition?: ConditionFunction) {
@@ -340,28 +423,95 @@ export class QueryBuilder extends SqlBuilder<never> {
         return this;
     }
     // 代理TableBuilder
-    innerJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+    innerJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         this.tableBuilder.innerJoin(table, alias, on, condition);
         return this;
     }
-    leftJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+    leftJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         this.tableBuilder.leftJoin(table, alias, on, condition);
         return this;
     }
-    rightJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+    rightJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         this.tableBuilder.rightJoin(table, alias, on, condition);
         return this;
     }
-    fullJoin(table: string, alias?: string, on?: ConditionBuilder, condition?: ConditionFunction) {
+    fullJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         this.tableBuilder.fullJoin(table, alias, on, condition);
         return this;
     }
-    // 实现ISqlBuilder
+    // 代理WhereBuilder
+    and() {
+        return this.whereBuilder.and();
+    }
+    or() {
+        return this.whereBuilder.or();
+    }
+    eqaul(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.equal(field, value, condition);
+        return this;
+    }
+    notEqual(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.notEqual(field, value, condition);
+        return this;
+    }
+    gt(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.gt(field, value, condition);
+        return this;
+    }
+    gte(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.gte(field, value, condition);
+        return this;
+    }
+    lt(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.lt(field, value, condition);
+        return this;
+    }
+    lte(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.lte(field, value, condition);
+        return this;
+    }
+    like(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.like(field, value, condition);
+        return this;
+    }
+    startsWith(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.startsWith(field, value, condition);
+        return this;
+    }
+    endsWith(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.endsWith(field, value, condition);
+        return this;
+    }
+    in(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.in(field, value, condition);
+        return this;
+    }
+    notIn(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.notIn(field, value, condition);
+        return this;
+    }
+    isNull(field: string, condition?: ConditionFunction) {
+        this.whereBuilder.isNull(field, condition);
+        return this;
+    }
+    notNull(field: string, condition?: ConditionFunction) {
+        this.whereBuilder.notNull(field, condition);
+        return this;
+    }
+    between(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.between(field, value, condition);
+        return this;
+    }
+    notBetween(field: string, value: unknown, condition?: ConditionFunction) {
+        this.whereBuilder.notBetween(field, value, condition);
+        return this;
+    }
+    // 实现SqlBuilder
     toSql(): string {
         return joinSql([this.selectBuilder.toSql(), this.tableBuilder.toSql(), this.whereBuilder.toSql()]);
     }
     getValues(): unknown[] {
-        return [...this.tableBuilder.getValues()];
+        return [...this.selectBuilder.getValues(), ...this.tableBuilder.getValues(), ...this.whereBuilder.getValues()];
     }
     reset() {
         this.selectBuilder.reset();
