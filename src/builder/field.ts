@@ -24,11 +24,23 @@ export class Field implements ISqlify {
      * @example Field.parse('u.name u_name') // new Field('name', 'u_name', 'u')
      */
     static parse(express = '*') {
-        const arr = express.split('.');
-        const name = arr[1] ?? express;
+        let arr = express.split('.');
+        let name = arr[1] ?? express,
+            alias;
         const table = arr.length > 1 ? arr[0] : void 0;
-        const alias = name.split('as')[1]?.trim() ?? name.split(/\s+/)[1];
-        return new Field(express, alias, table);
+
+        arr = name.split(/\s+as\s+/);
+        if (arr.length > 1) {
+            name = arr[0];
+            alias = arr[1];
+        } else {
+            arr = name.split(/\s+/);
+            if (arr.length > 1) {
+                name = arr[0];
+                alias = arr[1];
+            }
+        }
+        return new Field(name, alias, table);
     }
     toSql(): string {
         return concatSql([

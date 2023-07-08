@@ -14,6 +14,8 @@ export default async () => {
         .select('age')
         .select('password', () => Date.now() % 2 === 0);
     console.info(query.toSql());
+    query.reset().from('user', 'u').select('u.id').select('u.name').select('u.age').select('u.password as pwd');
+    console.info(query.toSql());
     // 内联表查询
     query
         .reset()
