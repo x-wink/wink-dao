@@ -85,7 +85,7 @@ export enum LogicOperator {
     And = 'and',
     Or = 'or',
 }
-export class ConditionItem implements ISqlify {
+export class Condition implements ISqlify {
     private field: Field;
     private operator: ConditionOperator;
     private value: unknown;
@@ -97,48 +97,55 @@ export class ConditionItem implements ISqlify {
     toSql(): string {
         let placeholder = '',
             error: never;
-        switch (this.operator) {
-            case ConditionOperator.Equal:
-            case ConditionOperator.NotEqual:
-            case ConditionOperator.GreaterThan:
-            case ConditionOperator.GreaterThanOrEqual:
-            case ConditionOperator.LessThan:
-            case ConditionOperator.LessThanOrEqual:
-                placeholder = `?`;
-                break;
-            case ConditionOperator.IsNull:
-            case ConditionOperator.IsNotNull:
-                break;
-            case ConditionOperator.StartsWith:
-                placeholder = `?%`;
-                break;
-            case ConditionOperator.EndsWith:
-                placeholder = `%?`;
-                break;
-            case ConditionOperator.Like:
-                placeholder = `%?%`;
-                break;
-            case ConditionOperator.In:
-            case ConditionOperator.NotIn:
-                placeholder = `( ${joinSql(
-                    this.getValues().map(() => '?'),
-                    ', ',
-                    false
-                )} )`;
-                break;
-            case ConditionOperator.Between:
-            case ConditionOperator.NotBetween:
-                placeholder = `( ? and ? )`;
-                break;
-            default:
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                error = this.operator;
-                break;
+        if (this.value instanceof QueryBuilder) {
+            placeholder = joinSql(['(', this.value.toSql(), ')'], false);
+        } else {
+            switch (this.operator) {
+                case ConditionOperator.Equal:
+                case ConditionOperator.NotEqual:
+                case ConditionOperator.GreaterThan:
+                case ConditionOperator.GreaterThanOrEqual:
+                case ConditionOperator.LessThan:
+                case ConditionOperator.LessThanOrEqual:
+                    placeholder = `?`;
+                    break;
+                case ConditionOperator.IsNull:
+                case ConditionOperator.IsNotNull:
+                    break;
+                case ConditionOperator.StartsWith:
+                    placeholder = `?%`;
+                    break;
+                case ConditionOperator.EndsWith:
+                    placeholder = `%?`;
+                    break;
+                case ConditionOperator.Like:
+                    placeholder = `%?%`;
+                    break;
+                case ConditionOperator.In:
+                case ConditionOperator.NotIn:
+                    placeholder = `( ${joinSql(
+                        this.getValues().map(() => '?'),
+                        ', ',
+                        false
+                    )} )`;
+                    break;
+                case ConditionOperator.Between:
+                case ConditionOperator.NotBetween:
+                    placeholder = `( ? and ? )`;
+                    break;
+                default:
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    error = this.operator;
+                    break;
+            }
         }
         return joinSql([this.field.toSql(), this.operator, placeholder]);
     }
     getValues(): unknown[] {
-        return this.value instanceof Array ? this.value : [this.value];
+        return [
+            ...(this.value instanceof Array ? this.value : [this.value]),
+            ...(this.value instanceof ConditionBuilder ? this.value.getValues() : []),
+        ];
     }
 }
 export class GroupBy implements ISqlify {
@@ -201,27 +208,32 @@ export class Limit implements ISqlify {
 export interface ConditionFunction {
     (): boolean;
 }
-export abstract class ISqlBuilder extends ISqlify {
-    abstract notEmpty(): boolean;
-    abstract reset(): ThisType<this>;
+export abstract class SqlBuilder<T> extends ISqlify {
+    protected children: T[] = [];
+    protected notEmpty() {
+        return this.children.length > 0;
+    }
+    reset() {
+        this.children = [];
+        return this;
+    }
 }
-export class SelectBuilder implements ISqlBuilder {
-    private fields = [] as Field[];
+export class SelectBuilder extends SqlBuilder<Field> {
     select(field?: string, table?: string, condition?: ConditionFunction) {
         if (!condition || condition()) {
-            this.fields.push(new Field(field, table));
+            this.children.push(new Field(field, table));
         }
         return this;
     }
     toSql(): string {
-        if (!this.fields.length) {
+        if (!this.children.length) {
             this.select();
         }
         return joinSql(
             [
                 'select',
                 joinSql(
-                    this.fields.map((item) => item.toSql()),
+                    this.children.map((item) => item.toSql()),
                     ', ',
                     false
                 ),
@@ -232,17 +244,10 @@ export class SelectBuilder implements ISqlBuilder {
     getValues(): unknown[] {
         return [];
     }
-    notEmpty(): boolean {
-        return this.fields.length > 0;
-    }
-    reset() {
-        this.fields = [];
-        return this;
-    }
 }
-export class TableBuilder implements ISqlBuilder {
-    private tables = [] as JoinTable[];
+export class TableBuilder extends SqlBuilder<JoinTable> {
     constructor(table: string, alias?: string) {
+        super();
         this.from(table, alias);
     }
     private join(
@@ -253,7 +258,7 @@ export class TableBuilder implements ISqlBuilder {
         condition?: ConditionFunction
     ) {
         if (!condition || condition()) {
-            this.tables.push(new JoinTable(table, alias, on, joinType));
+            this.children.push(new JoinTable(table, alias, on, joinType));
         }
         return this;
     }
@@ -274,56 +279,49 @@ export class TableBuilder implements ISqlBuilder {
     }
     toSql(): string {
         return joinSql(
-            this.tables.map((item) => item.toSql()),
+            this.children.map((item) => item.toSql()),
             false
         );
     }
     getValues(): unknown[] {
-        return this.tables.flatMap((item) => item.getValues());
-    }
-    reset() {
-        this.tables = [this.tables[0]];
-        return this;
-    }
-    notEmpty(): boolean {
-        return this.tables.length > 0;
+        return this.children.flatMap((item) => item.getValues());
     }
 }
-export class ConditionBuilder implements ISqlBuilder {
-    private conditions = [] as ISqlify[];
+export class ConditionBuilder extends SqlBuilder<ConditionBuilder | Condition> {
     private logic: LogicOperator;
     constructor(logic: LogicOperator = LogicOperator.And) {
+        super();
         this.logic = logic;
     }
     nest() {
         const nest = new ConditionBuilder();
-        this.conditions.push(nest);
+        this.children.push(nest);
         return nest;
     }
     is(field: Field, value: unknown, condition?: ConditionFunction) {
         if (!condition || condition()) {
-            this.conditions.push(new ConditionItem(field, ConditionOperator.Equal, value));
+            this.children.push(new Condition(field, ConditionOperator.Equal, value));
         }
     }
     toSql(): string {
         return joinSql(
-            this.conditions.map((item) => (item instanceof ConditionBuilder ? `( ${item.toSql()} )` : item.toSql())),
+            this.children.map((item) => (item instanceof ConditionBuilder ? `( ${item.toSql()} )` : item.toSql())),
             ` ${this.logic} `,
             false
         );
     }
     getValues(): unknown[] {
-        return this.conditions.flatMap((item) => item.getValues());
+        return this.children.flatMap((item) => item.getValues());
     }
     reset() {
-        this.conditions = [];
+        this.children = [];
         return this;
     }
     notEmpty(): boolean {
-        return this.conditions.length > 0;
+        return this.children.length > 0;
     }
 }
-export class QueryBuilder implements ISqlBuilder {
+export class QueryBuilder extends SqlBuilder<never> {
     private selectBuilder: SelectBuilder;
     private tableBuilder: TableBuilder;
     private whereBuilder: ConditionBuilder;
@@ -331,6 +329,7 @@ export class QueryBuilder implements ISqlBuilder {
     private orderBy?: OrderBy[];
     private limit?: Limit;
     constructor(table: string, alias?: string) {
+        super();
         this.selectBuilder = new SelectBuilder();
         this.tableBuilder = new TableBuilder(table, alias);
         this.whereBuilder = new ConditionBuilder();
@@ -369,8 +368,5 @@ export class QueryBuilder implements ISqlBuilder {
         this.tableBuilder.reset();
         this.whereBuilder.reset();
         return this;
-    }
-    notEmpty(): boolean {
-        return this.selectBuilder.notEmpty() && this.tableBuilder.notEmpty() && this.whereBuilder.notEmpty();
     }
 }
