@@ -10,7 +10,7 @@ import { JoinTable, JoinTableType } from './table';
  * select子语句构建器
  */
 export class SelectBuilder extends SqlBuilder<Field> {
-    select(...fieldExpresses: [] | [...string[], string | ConditionFunction]) {
+    select(...fieldExpresses: [...string[], string | ConditionFunction]) {
         const lastIndex = fieldExpresses.length - 1,
             last = fieldExpresses[lastIndex];
         const condition = last instanceof Function ? (last as ConditionFunction) : void 0;
@@ -23,7 +23,7 @@ export class SelectBuilder extends SqlBuilder<Field> {
     }
     toSql(): string {
         if (!this.children.length) {
-            this.select();
+            this.select('*');
         }
         return concatSql(
             [
@@ -242,6 +242,12 @@ export class ConditionBuilder extends SqlBuilder<ConditionBuilder | Condition> {
         return this.where(ConditionOperator.EndsWith, field, value, condition);
     }
     /**
+     * 单字符模糊查询
+     */
+    match(field: string, value: [string, unknown], condition?: ConditionFunction) {
+        return this.where(ConditionOperator.Match, field, value, condition);
+    }
+    /**
      * 范围查询，枚举范围内，常配合子查询使用
      */
     in(field: string, value: unknown, condition?: ConditionFunction) {
@@ -437,7 +443,7 @@ export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
      * @example builder.select('id', 'name', 'age').select('password', () => loginUser.isAdmin)
      */
     // TODO 怎么优化这丑陋的类型提示
-    select(...args: [] | [...string[], string | ConditionFunction]) {
+    select(...args: [...string[], string | ConditionFunction]) {
         this.selectBuilder.select(...args);
         return this;
     }
@@ -495,6 +501,10 @@ export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
     }
     like(field: string, value: unknown, condition?: ConditionFunction) {
         this.whereBuilder.like(field, value, condition);
+        return this;
+    }
+    match(field: string, value: [string, unknown], condition?: ConditionFunction) {
+        this.whereBuilder.match(field, value, condition);
         return this;
     }
     startsWith(field: string, value: unknown, condition?: ConditionFunction) {

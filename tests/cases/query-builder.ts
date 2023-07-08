@@ -17,13 +17,25 @@ export default async () => {
     console.info('\n多表查询');
     query
         .reset()
-        .from('user', 'u')
         .select('u.*', 'r.*')
-        .innerJoin('role', 'r', new OnBuilder().equal('u.roleId', Field.parse('r.id')));
+        .from('user', 'u')
+        .innerJoin('role', 'r', new OnBuilder().equal('u.role_id', Field.parse('r.id')));
+    console.info(query.toSql());
+    query
+        .reset()
+        .select('u.*', 'r.*', 'm.*')
+        .from('user', 'u')
+        .leftJoin('r_user_role', 'ur', new OnBuilder().equal('u.id', Field.parse('ur.user_id')))
+        .leftJoin('role', 'r', new OnBuilder().equal('ur.role_id', Field.parse('r.id')))
+        .leftJoin('r_role_menu', 'rm', new OnBuilder().equal('r.id', Field.parse('rm.role_id')))
+        .leftJoin('menu', 'm', new OnBuilder().equal('rm.menu_id', Field.parse('m.id')));
     console.info(query.toSql());
 
     console.info('\n模糊查询');
     query.reset().from('user').or().like('name', '文').startsWith('name', '向').endsWith('name', '可');
+    console.info(query.toSql());
+    console.info(query.getValues());
+    query.reset().from('user').match('name', [`concat('_', ?, '_')`, '文']);
     console.info(query.toSql());
     console.info(query.getValues());
 
