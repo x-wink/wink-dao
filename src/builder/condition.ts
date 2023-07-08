@@ -95,18 +95,20 @@ export class Condition implements ISqlify {
     private placeholder?: string;
     constructor(field: Field, operator: ConditionOperator, value: unknown) {
         if (operator === ConditionOperator.Match) {
-            // TODO 有没有办法只用TS的类型推断实现operator是ConditionOperator.Match时value的类型不一样
+            // TODO 对单字符模糊匹配做特殊处理，不知道怎么通过TS的类型推断实现operator是ConditionOperator.Match时value的类型不一样，暂时运行时抛异常
             if (!Array.isArray(value) || value.length !== 2) {
                 throw new Error(
-                    '使用 ConditionOperator.Match 时 value 必须为只有两个元素的数组！第一个元素为参数占位符字符串，第二个元素为实际参数值。'
+                    '使用 ConditionOperator.Match 时 value 必须为只有两个元素的数组！第一个元素为参数字符串类型的参数占位符模板，第二个元素为实际参数值。'
                 );
             }
             const temp = value as [string, unknown];
             this.placeholder = temp[0];
             value = temp[1];
             if (!this.placeholder.match(/[_%]/g)?.length) {
-                // eslint-disable-next-line no-console
-                console.warn('使用 ConditionOperator.Match 时，参数占位符中没有包含通配符[_%]！');
+                throw new Error('使用 ConditionOperator.Match 时，参数占位符模板中没有包含通配符[_%]！');
+            }
+            if (this.placeholder.match(/\?/g)?.length !== 1) {
+                throw new Error('使用 ConditionOperator.Match 时，参数占位符模板中必须有且仅有一个英文问号！');
             }
         }
         this.field = field;
