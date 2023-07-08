@@ -1,230 +1,32 @@
-import { joinSql, secureName } from '../utils';
-
-export abstract class ISqlify {
-    abstract toSql(): string;
-    abstract getValues(): unknown[];
-}
-export class Field implements ISqlify {
-    private table?: string;
-    private name: string;
-    constructor(name = '*', table?: string) {
-        if (table) {
-            this.name = name;
-            this.table = table;
-        } else {
-            const arr = name.split('.');
-            this.name = arr[1] ?? name;
-            this.table = arr.length > 1 ? arr[0] : void 0;
-        }
-    }
-    toSql(): string {
-        return joinSql([secureName(this.table), this.name === '*' ? this.name : secureName(this.name)], '.');
-    }
-    getValues(): unknown[] {
-        return [];
-    }
-}
-export class Table implements ISqlify {
-    private alias?: string;
-    private name: string;
-    constructor(name: string, alias?: string) {
-        this.name = name;
-        this.alias = alias;
-    }
-    toSql(): string {
-        return joinSql([secureName(this.name), secureName(this.alias)], ' as ');
-    }
-    getValues(): unknown[] {
-        return [];
-    }
-}
-export enum JoinTableType {
-    PRIMARY = 'from',
-    LEFT = 'left join',
-    RIGHT = 'right join',
-    INNER = 'inner join',
-    FULL = 'full join',
-}
-export class JoinTable extends Table implements ISqlify {
-    private joinType: JoinTableType;
-    private condition?: OnBuilder;
-    constructor(name: string, alias?: string, condition?: OnBuilder, joinType = JoinTableType.INNER) {
-        super(name, alias);
-        this.joinType = joinType;
-        this.condition = condition;
-    }
-    toSql(): string {
-        return joinSql(
-            [
-                this.joinType,
-                super.toSql(),
-                this.joinType !== JoinTableType.PRIMARY && this.condition ? this.condition.toSql() : '',
-            ],
-            false
-        );
-    }
-    getValues(): unknown[] {
-        return this.condition?.getValues() ?? [];
-    }
-}
-// TODO 支持单字符模糊匹配
-export enum ConditionOperator {
-    Equal = '=',
-    NotEqual = '<>',
-    GreaterThan = '>',
-    GreaterThanOrEqual = '>=',
-    LessThan = '<',
-    LessThanOrEqual = '<=',
-    Like = 'like',
-    StartsWith = 'startsWith',
-    EndsWith = 'endsWith',
-    In = 'in',
-    NotIn = 'not in',
-    IsNull = 'is null',
-    IsNotNull = 'is not null',
-    Between = 'between',
-    NotBetween = 'not between',
-}
-export enum ConditionLogic {
-    And = 'and',
-    Or = 'or',
-}
-export class Condition implements ISqlify {
-    private field: Field;
-    private operator: ConditionOperator;
-    private value: unknown;
-    constructor(field: Field, operator: ConditionOperator, value: unknown) {
-        this.field = field;
-        this.operator = operator;
-        this.value = value;
-    }
-    toSql(): string {
-        let placeholder = '',
-            error: never;
-        if (this.value instanceof QueryBuilder) {
-            placeholder = joinSql(['(', this.value.toSql(), ')'], false);
-        } else {
-            switch (this.operator) {
-                case ConditionOperator.Equal:
-                case ConditionOperator.NotEqual:
-                case ConditionOperator.GreaterThan:
-                case ConditionOperator.GreaterThanOrEqual:
-                case ConditionOperator.LessThan:
-                case ConditionOperator.LessThanOrEqual:
-                    placeholder = `?`;
-                    break;
-                case ConditionOperator.IsNull:
-                case ConditionOperator.IsNotNull:
-                    break;
-                case ConditionOperator.StartsWith:
-                    placeholder = `concat(?, '%')`;
-                    break;
-                case ConditionOperator.EndsWith:
-                    placeholder = `concat('%', ?)`;
-                    break;
-                case ConditionOperator.Like:
-                    placeholder = `concat('%', ?, '%')`;
-                    break;
-                case ConditionOperator.In:
-                case ConditionOperator.NotIn:
-                    placeholder = `( ${joinSql(
-                        this.getValues().map(() => '?'),
-                        ', ',
-                        false
-                    )} )`;
-                    break;
-                case ConditionOperator.Between:
-                case ConditionOperator.NotBetween:
-                    placeholder = `( ? and ? )`;
-                    break;
-                default:
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    error = this.operator;
-                    break;
-            }
-        }
-        const map = {
-            [ConditionOperator.StartsWith]: ConditionOperator.Like,
-            [ConditionOperator.EndsWith]: ConditionOperator.Like,
-        } as Record<ConditionOperator, ConditionOperator>;
-        return joinSql([this.field.toSql(), this.operator in map ? map[this.operator] : this.operator, placeholder]);
-    }
-    getValues(): unknown[] {
-        return [
-            ...(this.value instanceof Array ? this.value : [this.value]),
-            ...(this.value instanceof ConditionBuilder ? this.value.getValues() : []),
-        ];
-    }
-}
-export enum OrderByDirection {
-    ASC = 'asc',
-    DESC = 'desc',
-}
-export class OrderBy implements ISqlify {
-    private field: Field;
-    private direction: OrderByDirection;
-    constructor(field: Field, sort: OrderByDirection = OrderByDirection.ASC) {
-        this.field = field;
-        this.direction = sort;
-    }
-    toSql(): string {
-        return joinSql([this.field.toSql(), this.direction], false);
-    }
-    getValues(): unknown[] {
-        return [];
-    }
-}
-export class Limit implements ISqlify {
-    private start: number;
-    private end: number;
-    constructor(start: number, end: number) {
-        this.start = start;
-        this.end = end;
-    }
-    static page(pageNo: number, pageSize: number) {
-        const start = pageSize * (pageNo - 1),
-            end = start + pageSize;
-        return new Limit(start, end);
-    }
-    toSql(): string {
-        return joinSql(['limit', '?,?'], false);
-    }
-    getValues(): unknown[] {
-        return [this.start, this.end];
-    }
-}
-export interface ConditionFunction {
-    (): boolean;
-}
-export abstract class SqlBuilder<T extends ISqlify> extends ISqlify {
-    protected children: T[] = [];
-    protected notEmpty() {
-        return this.children.length > 0;
-    }
-    toSql() {
-        return joinSql(this.children.map((item) => item.toSql()));
-    }
-    getValues(): unknown[] {
-        return this.children.flatMap((item) => item.getValues());
-    }
-    reset() {
-        this.children = [];
-        return this;
-    }
-}
+import { ConditionFunction, ConditionKeyword } from '../types';
+import { concatSql } from '../utils';
+import { ISqlify, SqlBuilder } from './base';
+import { Condition, ConditionLogic, ConditionOperator } from './condition';
+import { Field } from './field';
+import { Limit } from './limit';
+import { OrderBy, OrderByDirection } from './orderBy';
+import { JoinTable, JoinTableType } from './table';
+/**
+ * select子语句构建器
+ */
 export class SelectBuilder extends SqlBuilder<Field> {
-    select(field?: string, table?: string, condition?: ConditionFunction) {
-        condition?.() !== false && this.children.push(new Field(field, table));
+    /**
+     * 添加查询字段，默认查询 select *
+     * @param fieldExpress 字段表达式
+     * @param condition 生效条件
+     */
+    select(fieldExpress?: string, condition?: ConditionFunction) {
+        condition?.() !== false && this.children.push(Field.parse(fieldExpress));
         return this;
     }
     toSql(): string {
         if (!this.children.length) {
             this.select();
         }
-        return joinSql(
+        return concatSql(
             [
                 'select',
-                joinSql(
+                concatSql(
                     this.children.map((item) => item.toSql()),
                     ', ',
                     false
@@ -237,11 +39,22 @@ export class SelectBuilder extends SqlBuilder<Field> {
         return [];
     }
 }
+/**
+ * from子语句和join子语句构建器
+ */
 export class TableBuilder extends SqlBuilder<JoinTable> {
-    constructor(table: string, alias?: string) {
+    private hasPrimary = false;
+    constructor() {
         super();
-        this.from(table, alias);
     }
+    /**
+     * 添加数据表
+     * @param table 表名
+     * @param alias 别名
+     * @param on 连接条件，from子语句没有
+     * @param joinType 连接类型
+     * @param condition 生效条件
+     */
     private join(
         table: string,
         alias?: string,
@@ -249,38 +62,95 @@ export class TableBuilder extends SqlBuilder<JoinTable> {
         joinType?: JoinTableType,
         condition?: ConditionFunction
     ) {
-        condition?.() !== false && this.children.push(new JoinTable(table, alias, on, joinType));
+        if (condition?.() !== false) {
+            const joinTable = new JoinTable(table, alias, on, joinType);
+            if (joinType === JoinTableType.PRIMARY) {
+                // 确保主表只有一个并且必须排第一
+                if (this.hasPrimary) {
+                    this.children[0] = joinTable;
+                } else {
+                    this.hasPrimary = true;
+                    this.children.unshift(joinTable);
+                }
+            } else {
+                this.children.push(joinTable);
+            }
+        }
         return this;
     }
-    private from(table: string, alias?: string) {
+    /**
+     * 设置主表
+     * @param table 表名
+     * @param alias 别名
+     */
+    from(table: string, alias?: string) {
         return this.join(table, alias, void 0, JoinTableType.PRIMARY);
     }
+    /**
+     * 添加内连接
+     * @param table 表名
+     * @param alias 别名
+     * @param on 连接条件
+     * @param condition 生效条件
+     */
     innerJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         return this.join(table, alias, on, JoinTableType.INNER, condition);
     }
+    /**
+     * 添加左外连接
+     * @param table 表名
+     * @param alias 别名
+     * @param on 连接条件
+     * @param condition 生效条件
+     */
     leftJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         return this.join(table, alias, on, JoinTableType.LEFT, condition);
     }
+    /**
+     * 添加右外连接
+     * @param table 表名
+     * @param alias 别名
+     * @param on 连接条件
+     * @param condition 生效条件
+     */
     rightJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         return this.join(table, alias, on, JoinTableType.RIGHT, condition);
     }
+    /**
+     * 添加全外连接
+     * @param table 表名
+     * @param alias 别名
+     * @param on 连接条件
+     * @param condition 生效条件
+     */
     fullJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         return this.join(table, alias, on, JoinTableType.FULL, condition);
     }
     reset() {
-        this.children.splice(1, this.children.length);
+        super.reset();
+        this.hasPrimary = false;
         return this;
     }
 }
-export type ConditionKeyword = 'where' | 'on' | 'having' | '';
+/**
+ * 条件构建器（条件集，可包含嵌套多个条件集或多个条件项）
+ */
 export class ConditionBuilder extends SqlBuilder<ConditionBuilder | Condition> {
     private keyword: ConditionKeyword;
     protected logic: ConditionLogic;
+    /**
+     * @param keyword 条件子语句关键字
+     * @param logic 条件集逻辑关系，同一个条件集只能是同样的逻辑关系，除非使用嵌套条件集
+     */
     constructor(keyword: ConditionKeyword = '', logic: ConditionLogic = ConditionLogic.And) {
         super();
         this.keyword = keyword;
         this.logic = logic;
     }
+    /**
+     * 新增嵌套条件集，当前条件集没有条件项的时候不会添加而是更改条件集逻辑关系
+     * @param logic 条件集中条件项之间的逻辑关系
+     */
     private nest(logic = ConditionLogic.And) {
         let nest;
         if (this.notEmpty()) {
@@ -292,66 +162,124 @@ export class ConditionBuilder extends SqlBuilder<ConditionBuilder | Condition> {
         }
         return nest;
     }
+    /**
+     * 如果当前条件集有条件项则添加一个逻辑关系为and的嵌套条件集，否则修改当前条件集的逻辑关系为and
+     */
     and() {
         return this.nest();
     }
+    /**
+     * 如果当前条件集有条件项则添加一个逻辑关系为or的嵌套条件集，否则修改当前条件集的逻辑关系为or
+     */
     or() {
         return this.nest(ConditionLogic.Or);
     }
-    private where(type: ConditionOperator, field: string, value: unknown, condition?: ConditionFunction) {
-        condition?.() !== false && this.children.push(new Condition(new Field(field), type, value));
+    /**
+     * 添加一个条件项
+     * @param type 条件运算符
+     * @param fieldExpress 字段表达式
+     * @param value 参数，值为QueryBuilder类型的时候形成子查询，值为Field类型的时候不使用参数占位符直接进行字段比较
+     * @param condition 生效条件
+     */
+    private where(type: ConditionOperator, fieldExpress: string, value: unknown, condition?: ConditionFunction) {
+        condition?.() !== false && this.children.push(new Condition(Field.parse(fieldExpress), type, value));
         return this;
     }
+    /**
+     * 相等
+     */
     equal(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.Equal, field, value, condition);
     }
+    /**
+     * 不相等
+     */
     notEqual(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.NotEqual, field, value, condition);
     }
+    /**
+     * 大于
+     */
     gt(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.GreaterThan, field, value, condition);
     }
+    /**
+     * 大于等于
+     */
     gte(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.GreaterThanOrEqual, field, value, condition);
     }
+    /**
+     * 小于
+     */
     lt(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.LessThan, field, value, condition);
     }
+    /**
+     * 小于等于
+     */
     lte(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.LessThanOrEqual, field, value, condition);
     }
+    /**
+     * 模糊查询，包含
+     */
     like(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.Like, field, value, condition);
     }
+    /**
+     * 模糊查询，以此开头
+     */
     startsWith(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.StartsWith, field, value, condition);
     }
+    /**
+     * 模糊查询，以此结尾
+     */
     endsWith(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.EndsWith, field, value, condition);
     }
+    /**
+     * 范围查询，枚举范围内，常配合子查询使用
+     */
     in(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.In, field, value, condition);
     }
+    /**
+     * 范围查询，枚举范围外
+     */
     notIn(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.NotIn, field, value, condition);
     }
+    /**
+     * 空值
+     */
     isNull(field: string, condition?: ConditionFunction) {
         return this.where(ConditionOperator.IsNull, field, void 0, condition);
     }
+    /**
+     * 非空值
+     */
     notNull(field: string, condition?: ConditionFunction) {
         return this.where(ConditionOperator.IsNotNull, field, void 0, condition);
     }
+    /**
+     * 范围查询，区间范围内
+     */
     between(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.Between, field, value, condition);
     }
+    /**
+     * 范围查询，区间范围外
+     */
     notBetween(field: string, value: unknown, condition?: ConditionFunction) {
         return this.where(ConditionOperator.NotBetween, field, value, condition);
     }
     toSql(): string {
         return this.notEmpty()
-            ? joinSql([
+            ? concatSql([
                   this.keyword,
-                  joinSql(
+                  concatSql(
                       this.children.map((item) =>
                           item instanceof ConditionBuilder ? `( ${item.toSql()} )` : item.toSql()
                       ),
@@ -362,25 +290,37 @@ export class ConditionBuilder extends SqlBuilder<ConditionBuilder | Condition> {
             : '';
     }
 }
+/**
+ * on子句构建器
+ */
 export class OnBuilder extends ConditionBuilder {
     constructor(logic: ConditionLogic = ConditionLogic.And) {
         super('on', logic);
     }
 }
+/**
+ * where子句构建器
+ */
 export class WhereBuilder extends ConditionBuilder {
     constructor(logic: ConditionLogic = ConditionLogic.And) {
         super('where', logic);
     }
 }
+/**
+ * having子句构建器
+ */
 export class HavingBuilder extends ConditionBuilder {
     constructor(logic: ConditionLogic = ConditionLogic.And) {
         super('having', logic);
     }
 }
+/**
+ * groupBy子句构建器
+ */
 export class GroupByBuilder extends SqlBuilder<Field> {
     private condition?: HavingBuilder;
-    groupBy(field: string, table?: string, condition?: ConditionFunction) {
-        condition?.() !== false && this.children.push(new Field(field, table));
+    groupBy(fieldExpress: string, condition?: ConditionFunction) {
+        condition?.() !== false && this.children.push(Field.parse(fieldExpress));
     }
     having(having?: HavingBuilder, condition?: ConditionFunction) {
         if (condition?.() !== false) {
@@ -389,10 +329,10 @@ export class GroupByBuilder extends SqlBuilder<Field> {
     }
     toSql(): string {
         return this.notEmpty()
-            ? joinSql(
+            ? concatSql(
                   [
                       'group by',
-                      joinSql(
+                      concatSql(
                           this.children.map((item) => item.toSql()),
                           ', ',
                           false
@@ -412,16 +352,19 @@ export class GroupByBuilder extends SqlBuilder<Field> {
         return this.condition?.getValues() ?? [];
     }
 }
+/**
+ * orderBy子句构建器
+ */
 export class OrderByBuilder extends SqlBuilder<OrderBy> {
-    orderBy(field: string, table?: string, direction = OrderByDirection.ASC, condition?: ConditionFunction) {
-        condition?.() !== false && this.children.push(new OrderBy(new Field(field, table), direction));
+    orderBy(fieldExpress: string, direction = OrderByDirection.ASC, condition?: ConditionFunction) {
+        condition?.() !== false && this.children.push(new OrderBy(Field.parse(fieldExpress), direction));
     }
     toSql(): string {
         return this.notEmpty()
-            ? joinSql(
+            ? concatSql(
                   [
                       'order by',
-                      joinSql(
+                      concatSql(
                           this.children.map((item) => item.toSql()),
                           ', ',
                           false
@@ -432,14 +375,30 @@ export class OrderByBuilder extends SqlBuilder<OrderBy> {
             : '';
     }
 }
+/**
+ * limit子句构建器
+ */
 export class LimitBuilder extends SqlBuilder<Limit> {
+    /**
+     * 截取
+     * @param start 开始下标
+     * @param end 结束下标
+     */
     limit(start: number, end: number) {
         this.children[0] = new Limit(start, end);
     }
+    /**
+     * 分页
+     * @param pageNo 页码，从1开始
+     * @param pageSize 页容量
+     */
     page(pageNo: number, pageSize: number) {
         this.children[0] = Limit.page(pageNo, pageSize);
     }
 }
+/**
+ * 查询语句构建器
+ */
 export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
     private selectBuilder: SelectBuilder;
     private tableBuilder: TableBuilder;
@@ -447,10 +406,11 @@ export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
     private groupByBuilder: GroupByBuilder;
     private orderByBuilder: OrderByBuilder;
     private limitBuilder: LimitBuilder;
-    constructor(table: string, alias?: string) {
+    constructor() {
         super();
+        // 初始化子语句构建器
         this.selectBuilder = new SelectBuilder();
-        this.tableBuilder = new TableBuilder(table, alias);
+        this.tableBuilder = new TableBuilder();
         this.whereBuilder = new WhereBuilder();
         this.groupByBuilder = new GroupByBuilder();
         this.orderByBuilder = new OrderByBuilder();
@@ -464,12 +424,17 @@ export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
             this.limitBuilder,
         ];
     }
+    // TODO 有什么好办法实现一键代理，继承只能单继承，实现多接口不适用，使用容器模式会丢失类型，一个一个代理又要重新写注释
     // 代理SelectBuilder
-    select(field?: string, table?: string, condition?: ConditionFunction) {
-        this.selectBuilder.select(field, table, condition);
+    select(field?: string, condition?: ConditionFunction) {
+        this.selectBuilder.select(field, condition);
         return this;
     }
     // 代理TableBuilder
+    from(table: string, alias?: string) {
+        this.tableBuilder.from(table, alias);
+        return this;
+    }
     innerJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         this.tableBuilder.innerJoin(table, alias, on, condition);
         return this;
@@ -554,8 +519,8 @@ export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
         return this;
     }
     // 代理GroupByBuilder
-    groupBy(field: string, table?: string, condition?: ConditionFunction) {
-        this.groupByBuilder.groupBy(field, table, condition);
+    groupBy(field: string, condition?: ConditionFunction) {
+        this.groupByBuilder.groupBy(field, condition);
         return this;
     }
     having(having?: HavingBuilder, condition?: ConditionFunction) {
@@ -563,8 +528,8 @@ export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
         return this;
     }
     // 代理OrderByBuilder
-    orderBy(field: string, table?: string, direction = OrderByDirection.ASC, condition?: ConditionFunction) {
-        this.orderByBuilder.orderBy(field, table, direction, condition);
+    orderBy(field: string, direction = OrderByDirection.ASC, condition?: ConditionFunction) {
+        this.orderByBuilder.orderBy(field, direction, condition);
         return this;
     }
     // 代理LimitBuilder
