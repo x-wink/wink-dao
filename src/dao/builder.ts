@@ -85,7 +85,7 @@ export enum ConditionOperator {
     Between = 'between',
     NotBetween = 'not between',
 }
-export enum LogicOperator {
+export enum ConditionLogic {
     And = 'and',
     Or = 'or',
 }
@@ -156,19 +156,19 @@ export class Condition implements ISqlify {
         ];
     }
 }
-export enum OrderSort {
+export enum OrderByDirection {
     ASC = 'asc',
     DESC = 'desc',
 }
 export class OrderBy implements ISqlify {
     private field: Field;
-    private sort: OrderSort;
-    constructor(field: Field, sort: OrderSort = OrderSort.ASC) {
+    private direction: OrderByDirection;
+    constructor(field: Field, sort: OrderByDirection = OrderByDirection.ASC) {
         this.field = field;
-        this.sort = sort;
+        this.direction = sort;
     }
     toSql(): string {
-        return joinSql([this.field.toSql(), this.sort], false);
+        return joinSql([this.field.toSql(), this.direction], false);
     }
     getValues(): unknown[] {
         return [];
@@ -201,12 +201,15 @@ export abstract class SqlBuilder<T extends ISqlify> extends ISqlify {
     protected notEmpty() {
         return this.children.length > 0;
     }
-    reset() {
-        this.children = [];
-        return this;
+    toSql() {
+        return joinSql(this.children.map((item) => item.toSql()));
     }
     getValues(): unknown[] {
         return this.children.flatMap((item) => item.getValues());
+    }
+    reset() {
+        this.children = [];
+        return this;
     }
 }
 export class SelectBuilder extends SqlBuilder<Field> {
@@ -268,23 +271,17 @@ export class TableBuilder extends SqlBuilder<JoinTable> {
         this.children.splice(1, this.children.length);
         return this;
     }
-    toSql(): string {
-        return joinSql(
-            this.children.map((item) => item.toSql()),
-            false
-        );
-    }
 }
 export type ConditionKeyword = 'where' | 'on' | 'having' | '';
 export class ConditionBuilder extends SqlBuilder<ConditionBuilder | Condition> {
     private keyword: ConditionKeyword;
-    protected logic: LogicOperator;
-    constructor(keyword: ConditionKeyword = '', logic: LogicOperator = LogicOperator.And) {
+    protected logic: ConditionLogic;
+    constructor(keyword: ConditionKeyword = '', logic: ConditionLogic = ConditionLogic.And) {
         super();
         this.keyword = keyword;
         this.logic = logic;
     }
-    private nest(logic = LogicOperator.And) {
+    private nest(logic = ConditionLogic.And) {
         let nest;
         if (this.notEmpty()) {
             nest = new ConditionBuilder(void 0, logic);
@@ -299,7 +296,7 @@ export class ConditionBuilder extends SqlBuilder<ConditionBuilder | Condition> {
         return this.nest();
     }
     or() {
-        return this.nest(LogicOperator.Or);
+        return this.nest(ConditionLogic.Or);
     }
     private where(type: ConditionOperator, field: string, value: unknown, condition?: ConditionFunction) {
         condition?.() !== false && this.children.push(new Condition(new Field(field), type, value));
@@ -366,17 +363,17 @@ export class ConditionBuilder extends SqlBuilder<ConditionBuilder | Condition> {
     }
 }
 export class OnBuilder extends ConditionBuilder {
-    constructor(logic: LogicOperator = LogicOperator.And) {
+    constructor(logic: ConditionLogic = ConditionLogic.And) {
         super('on', logic);
     }
 }
 export class WhereBuilder extends ConditionBuilder {
-    constructor(logic: LogicOperator = LogicOperator.And) {
+    constructor(logic: ConditionLogic = ConditionLogic.And) {
         super('where', logic);
     }
 }
 export class HavingBuilder extends ConditionBuilder {
-    constructor(logic: LogicOperator = LogicOperator.And) {
+    constructor(logic: ConditionLogic = ConditionLogic.And) {
         super('having', logic);
     }
 }
@@ -410,12 +407,32 @@ export class GroupByBuilder extends SqlBuilder<Field> {
         return this.condition?.getValues() ?? [];
     }
 }
-export class QueryBuilder extends SqlBuilder<never> {
+export class OrderByBuilder extends SqlBuilder<OrderBy> {
+    orderBy(field: string, table?: string, direction = OrderByDirection.ASC, condition?: ConditionFunction) {
+        condition?.() !== false && this.children.push(new OrderBy(new Field(field, table), direction));
+    }
+    toSql(): string {
+        return this.notEmpty()
+            ? joinSql(
+                  [
+                      'order by',
+                      joinSql(
+                          this.children.map((item) => item.toSql()),
+                          ', ',
+                          false
+                      ),
+                  ],
+                  false
+              )
+            : '';
+    }
+}
+export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
     private selectBuilder: SelectBuilder;
     private tableBuilder: TableBuilder;
     private whereBuilder: WhereBuilder;
     private groupByBuilder: GroupByBuilder;
-    private orderBy?: OrderBy[];
+    private orderByBuilder: OrderByBuilder;
     private limit?: Limit;
     constructor(table: string, alias?: string) {
         super();
@@ -423,6 +440,14 @@ export class QueryBuilder extends SqlBuilder<never> {
         this.tableBuilder = new TableBuilder(table, alias);
         this.whereBuilder = new WhereBuilder();
         this.groupByBuilder = new GroupByBuilder();
+        this.orderByBuilder = new OrderByBuilder();
+        this.children = [
+            this.selectBuilder,
+            this.tableBuilder,
+            this.whereBuilder,
+            this.groupByBuilder,
+            this.orderByBuilder,
+        ];
     }
     // 代理SelectBuilder
     select(field?: string, table?: string, condition?: ConditionFunction) {
@@ -522,28 +547,14 @@ export class QueryBuilder extends SqlBuilder<never> {
         this.groupByBuilder.having(having, condition);
         return this;
     }
-    // 实现SqlBuilder
-    toSql(): string {
-        return joinSql([
-            this.selectBuilder.toSql(),
-            this.tableBuilder.toSql(),
-            this.whereBuilder.toSql(),
-            this.groupByBuilder.toSql(),
-        ]);
+    // 代理OrderByBuilder
+    orderBy(field: string, table?: string, direction = OrderByDirection.ASC, condition?: ConditionFunction) {
+        this.orderByBuilder.orderBy(field, table, direction, condition);
+        return this;
     }
-    getValues(): unknown[] {
-        return [
-            ...this.selectBuilder.getValues(),
-            ...this.tableBuilder.getValues(),
-            ...this.whereBuilder.getValues(),
-            ...this.groupByBuilder.getValues(),
-        ];
-    }
+    // 覆盖SqlBuilder
     reset() {
-        this.selectBuilder.reset();
-        this.tableBuilder.reset();
-        this.whereBuilder.reset();
-        this.groupByBuilder.reset();
+        this.children.forEach((builder) => builder.reset());
         return this;
     }
 }

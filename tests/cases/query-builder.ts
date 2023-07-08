@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { HavingBuilder, QueryBuilder } from '../../src/dao/builder';
+import { HavingBuilder, OrderByDirection, QueryBuilder } from '../../src/dao/builder';
 
 export default async () => {
     const query = new QueryBuilder('user', 'u');
@@ -20,9 +20,11 @@ export default async () => {
     console.info(query.toSql());
     console.info(query.getValues());
 
-    const having = new HavingBuilder();
-    having.gte('age', 18);
-    query.reset().groupBy('sex').having(having);
+    query.reset().groupBy('sex').having(new HavingBuilder().gte('age', 18));
+    console.info(query.toSql());
+    console.info(query.getValues());
+
+    query.reset().orderBy('age', 'u').orderBy('lastLoginDate', 'u', OrderByDirection.DESC);
     console.info(query.toSql());
     console.info(query.getValues());
 };
