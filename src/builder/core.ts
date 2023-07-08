@@ -10,14 +10,16 @@ import { JoinTable, JoinTableType } from './table';
  * select子语句构建器
  */
 export class SelectBuilder extends SqlBuilder<Field> {
-    /**
-     * 添加查询字段，默认查询 select *
-     * @param fieldExpress 字段表达式
-     * @param condition 生效条件
-     */
-    select(fieldExpress?: string, condition?: ConditionFunction) {
-        condition?.() !== false && this.children.push(Field.parse(fieldExpress));
-        return this;
+    select(...fieldExpresses: [] | [...string[], string | ConditionFunction]) {
+        const lastIndex = fieldExpresses.length - 1,
+            last = fieldExpresses[lastIndex];
+        const condition = last instanceof Function ? (last as ConditionFunction) : void 0;
+        const fields = (last instanceof Function ? fieldExpresses.slice(0, lastIndex) : fieldExpresses) as string[];
+        if (condition?.() !== false) {
+            fields.forEach((field) => {
+                this.children.push(Field.parse(field));
+            });
+        }
     }
     toSql(): string {
         if (!this.children.length) {
@@ -426,8 +428,17 @@ export class QueryBuilder extends SqlBuilder<SqlBuilder<ISqlify>> {
     }
     // TODO 有什么好办法实现一键代理，继承只能单继承，实现多接口不适用，使用容器模式会丢失类型，一个一个代理又要重新写注释
     // 代理SelectBuilder
-    select(field?: string, condition?: ConditionFunction) {
-        this.selectBuilder.select(field, condition);
+    /**
+     * 批量添加查询字段，默认查询 select *
+     * @param fieldExpress1 字段表达式1
+     * @param fieldExpress2 字段表达式2
+     * @param fieldExpressN 字段表达式n
+     * @param condition 生效条件
+     * @example builder.select('id', 'name', 'age').select('password', () => loginUser.isAdmin)
+     */
+    // TODO 怎么优化这丑陋的类型提示
+    select(...args: [] | [...string[], string | ConditionFunction]) {
+        this.selectBuilder.select(...args);
         return this;
     }
     // 代理TableBuilder
