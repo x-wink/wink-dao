@@ -156,26 +156,6 @@ export class Condition implements ISqlify {
         ];
     }
 }
-export class GroupBy implements ISqlify {
-    private fields = [] as Field[];
-    private condition?: ConditionBuilder;
-    toSql(): string {
-        return joinSql(
-            [
-                'group by',
-                joinSql(
-                    this.fields.map((item) => item.toSql()),
-                    ', ',
-                    false
-                ),
-            ],
-            false
-        );
-    }
-    getValues(): unknown[] {
-        return this.condition?.getValues() ?? [];
-    }
-}
 export enum OrderSort {
     ASC = 'asc',
     DESC = 'desc',
@@ -284,6 +264,10 @@ export class TableBuilder extends SqlBuilder<JoinTable> {
     fullJoin(table: string, alias?: string, on?: OnBuilder, condition?: ConditionFunction) {
         return this.join(table, alias, on, JoinTableType.FULL, condition);
     }
+    reset() {
+        this.children.splice(1, this.children.length);
+        return this;
+    }
     toSql(): string {
         return joinSql(
             this.children.map((item) => item.toSql()),
@@ -311,17 +295,9 @@ export class ConditionBuilder extends SqlBuilder<ConditionBuilder | Condition> {
         }
         return nest;
     }
-    /**
-     * 构建并返回一个新的嵌套条件交集
-     * @description 注意：这里的and表示嵌套内的条件都是and，当前条件与嵌套条件的逻辑由当前条件的逻辑决定
-     */
     and() {
         return this.nest();
     }
-    /**
-     * 构建并返回一个新的嵌套条件并集
-     * @description 注意：这里的or表示嵌套内的条件都是or，当前条件与嵌套条件的逻辑由当前条件的逻辑决定
-     */
     or() {
         return this.nest(LogicOperator.Or);
     }
@@ -404,11 +380,41 @@ export class HavingBuilder extends ConditionBuilder {
         super('having', logic);
     }
 }
+export class GroupByBuilder extends SqlBuilder<Field> {
+    private condition?: HavingBuilder;
+    groupBy(field: string, table?: string, condition?: ConditionFunction) {
+        condition?.() !== false && this.children.push(new Field(field, table));
+    }
+    having(having?: HavingBuilder, condition?: ConditionFunction) {
+        if (condition?.() !== false) {
+            this.condition = having;
+        }
+    }
+    toSql(): string {
+        return this.notEmpty()
+            ? joinSql(
+                  [
+                      'group by',
+                      joinSql(
+                          this.children.map((item) => item.toSql()),
+                          ', ',
+                          false
+                      ),
+                      this.condition?.toSql() ?? '',
+                  ],
+                  false
+              )
+            : '';
+    }
+    getValues(): unknown[] {
+        return this.condition?.getValues() ?? [];
+    }
+}
 export class QueryBuilder extends SqlBuilder<never> {
     private selectBuilder: SelectBuilder;
     private tableBuilder: TableBuilder;
     private whereBuilder: WhereBuilder;
-    private groupBy?: GroupBy;
+    private groupByBuilder: GroupByBuilder;
     private orderBy?: OrderBy[];
     private limit?: Limit;
     constructor(table: string, alias?: string) {
@@ -416,6 +422,7 @@ export class QueryBuilder extends SqlBuilder<never> {
         this.selectBuilder = new SelectBuilder();
         this.tableBuilder = new TableBuilder(table, alias);
         this.whereBuilder = new WhereBuilder();
+        this.groupByBuilder = new GroupByBuilder();
     }
     // 代理SelectBuilder
     select(field?: string, table?: string, condition?: ConditionFunction) {
@@ -506,17 +513,37 @@ export class QueryBuilder extends SqlBuilder<never> {
         this.whereBuilder.notBetween(field, value, condition);
         return this;
     }
+    // 代理GroupByBuilder
+    groupBy(field: string, table?: string, condition?: ConditionFunction) {
+        this.groupByBuilder.groupBy(field, table, condition);
+        return this;
+    }
+    having(having?: HavingBuilder, condition?: ConditionFunction) {
+        this.groupByBuilder.having(having, condition);
+        return this;
+    }
     // 实现SqlBuilder
     toSql(): string {
-        return joinSql([this.selectBuilder.toSql(), this.tableBuilder.toSql(), this.whereBuilder.toSql()]);
+        return joinSql([
+            this.selectBuilder.toSql(),
+            this.tableBuilder.toSql(),
+            this.whereBuilder.toSql(),
+            this.groupByBuilder.toSql(),
+        ]);
     }
     getValues(): unknown[] {
-        return [...this.selectBuilder.getValues(), ...this.tableBuilder.getValues(), ...this.whereBuilder.getValues()];
+        return [
+            ...this.selectBuilder.getValues(),
+            ...this.tableBuilder.getValues(),
+            ...this.whereBuilder.getValues(),
+            ...this.groupByBuilder.getValues(),
+        ];
     }
     reset() {
         this.selectBuilder.reset();
         this.tableBuilder.reset();
         this.whereBuilder.reset();
+        this.groupByBuilder.reset();
         return this;
     }
 }
