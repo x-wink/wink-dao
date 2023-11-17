@@ -1,7 +1,8 @@
+import type { ColumnDefine, TableDefine, WinkDao } from '../types';
+import { unique, camel2Underline, compare } from '@xwink/utils';
 import { getDefaultLength } from '../config';
 import {
     ColumnType,
-    GET_TABLE_DEFINE_FIELD_NAME,
     InvalidTypeError,
     REG_TABLE_DEFINE_COLUMN,
     REG_TABLE_DEFINE_INFO,
@@ -9,25 +10,21 @@ import {
     REG_TABLE_DEFINE_PKS,
     REG_TABLE_DEFINE_PK_NAME,
     REG_TABLE_DEFINE_UK,
-    UnhandleError,
 } from '../defs';
-import { ColumnDefine, TableDefine, WinkDao } from '../types';
 import {
-    camel2underline,
-    clone,
-    compare,
     findAllTablesSql,
+    genTableAlterSql,
     genTableDefineSql,
     getTableDefineSql,
     parseJavaScriptTypeValue,
 } from '../utils';
-
 /**
  * 自动数据表管理
  * @param database 数据库名
  * @param dao dao操作库
  */
-export const useAutoTable = (database: string, dao: WinkDao) => {
+export const useAutoTable = (database: string, dao: WinkDao, normalrizeName: boolean) => {
+    const { logger } = dao;
     /**
      * 获取数据库中所有表名
      */
@@ -46,19 +43,20 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
      * 获取数据表定义SQL
      */
     const getTable = async (tableName: string) => {
-        const res = await dao.exec<{ [GET_TABLE_DEFINE_FIELD_NAME]: string; Table: string }[]>(
-            getTableDefineSql(tableName)
-        );
-        return res[0][GET_TABLE_DEFINE_FIELD_NAME];
+        const fieldName = 'Create Table';
+        const res = await dao.exec<{ [fieldName]: string }[]>(getTableDefineSql(tableName));
+        return res[0][fieldName];
     };
     /**
      * 解析数据表定义SQL为数据表配置对象
      */
-    const parseTableDefineSql = (sql: string) => {
+    const parseTableDefineSql = (sql: string, isRelationTable: boolean) => {
         const res: TableDefine = {
             name: '',
             columnDefines: [],
             charset: void 0,
+            constraints: [],
+            isRelationTable,
         };
         const rows = sql.split('\n');
         res.name = rows.shift()!.match(REG_TABLE_DEFINE_NAME)![1];
@@ -83,6 +81,7 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
                 );
             } else if (uk) {
                 res.columnDefines.find((item) => item.name === uk[2])!.unique = true;
+                res.constraints!.push(uk[1]);
             } else if (pk) {
                 const pkNames = pk[1].match(REG_TABLE_DEFINE_PK_NAME)!;
                 pkNames.forEach((name) => {
@@ -95,30 +94,30 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
         return normalrizeTableDefine(res);
     };
     /**
-     * 标准化字段配置
+     * 返回标准化字段配置，不修改源对象
      * @throws InvalidTypeError
      */
-    const normalrizeColumnDefine = (columnDefine: ColumnDefine, normalrizeName = false) => {
+    const normalrizeColumnDefine = (columnDefine: ColumnDefine) => {
+        let { name, defaultValue, length } = columnDefine;
         const {
             type,
             autoIncrement = false,
-            required = false,
+            required = !!defaultValue,
             primary = false,
             unique = false,
             comment,
             refrence,
         } = columnDefine;
-        let { name, length = getDefaultLength(type), defaultValue } = columnDefine;
         // 转换命名格式
         if (normalrizeName) {
-            name = camel2underline(name);
+            name = camel2Underline(name);
         }
         // 统一长度格式，填充类型默认长度，Date类型没有长度
+        length ??= getDefaultLength(type);
         if (typeof length === 'number') {
             length = [length];
         }
-        columnDefine.length ??= getDefaultLength(columnDefine.type);
-        if (type === ColumnType.DATE) {
+        if ([ColumnType.DATE, ColumnType.DATETIME].includes(type)) {
             length = [];
         }
         // 统一默认值
@@ -150,42 +149,58 @@ export const useAutoTable = (database: string, dao: WinkDao) => {
         };
     };
     /**
-     * 标准化数据表配置
+     * 返回标准化数据表配置，不修改源对象
      */
-    const normalrizeTableDefine = (tableDefine: TableDefine, normalrizeName = false) => {
-        const res = clone(tableDefine);
+    const normalrizeTableDefine = (tableDefine: TableDefine): Required<TableDefine> => {
+        const { charset = 'utf8mb4', isRelationTable = false, constraints = [] } = tableDefine;
+        let { name, columnDefines } = tableDefine;
         if (normalrizeName) {
-            res.name = camel2underline(res.name);
+            name = camel2Underline(name);
         }
-        res.columnDefines = res.columnDefines.map((item) => normalrizeColumnDefine(item, normalrizeName));
-        return res;
+        columnDefines = columnDefines.map((item) => normalrizeColumnDefine(item));
+        columnDefines = unique(columnDefines, (a, b) => a.name === b.name);
+        return {
+            name,
+            charset,
+            isRelationTable,
+            columnDefines,
+            constraints,
+        };
     };
     /**
-     * 尝试根据配置创建数据表
+     * 根据配置创建数据表
      */
-    const tryCreateTable = (tableDefine: TableDefine) => {
+    const createTable = (tableDefine: TableDefine) => {
+        logger.info(`自动创建表：${tableDefine.name}`);
         return dao.exec(genTableDefineSql(database, tableDefine));
     };
     /**
-     * 尝试根据配置更新数据表
+     * 判断是否需要更新数据表结构
+     * @param oldTableDefine 旧数据表结构
+     * @param newTableDefine 新数据表结构
      */
-    const tryUpdateTable = async (newTableDefine: TableDefine) => {
+    const needUpdate = (oldTableDefine: TableDefine, newTableDefine: TableDefine) => {
+        return newTableDefine.columnDefines.some((item) => {
+            const old = oldTableDefine.columnDefines.find((col) => col.name === item.name);
+            return !old || !compare(old, item);
+        });
+    };
+    /**
+     * 如果需要表结构发生变化，则根据配置更新数据表
+     */
+    const updateTable = async (newTableDefine: TableDefine) => {
         const tableDefineSql = await getTable(newTableDefine.name);
-        const oldTableDefine = parseTableDefineSql(tableDefineSql);
-        const isSame = compare(newTableDefine, oldTableDefine, ['charset']);
-        if (!isSame) {
-            // TODO 更新/同步数据表结构
-            throw new UnhandleError(
-                void 0,
-                new Error('数据表结构与配置不一致，暂未实现自动更新同步，请手动更新同步或删除旧表后重试')
-            );
+        const oldTableDefine = parseTableDefineSql(tableDefineSql, newTableDefine.isRelationTable!);
+        if (needUpdate(newTableDefine, oldTableDefine)) {
+            logger.info(`自动更新表：${newTableDefine.name}`);
+            return dao.exec(genTableAlterSql(database, oldTableDefine, newTableDefine));
         }
     };
     return {
         hasTable,
         normalrizeColumnDefine,
         normalrizeTableDefine,
-        tryCreateTable,
-        tryUpdateTable,
+        createTable,
+        updateTable,
     };
 };

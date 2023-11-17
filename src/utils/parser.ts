@@ -1,6 +1,6 @@
-import { PoolConfig } from 'mysql';
+import type { PoolOptions } from 'mysql2';
 import { InvalidConfigError, REG_AROUND_QUOTE, REG_CONNECTION_STR } from '../defs';
-import { MysqlConfig } from '../types';
+import type { MysqlConfig } from '../types';
 
 /**
  * 解析字符串值为真实js类型的值
@@ -12,12 +12,12 @@ export const parseJavaScriptTypeValue = (value?: string) => {
     try {
         if (typeof value !== 'undefined') {
             value = value.replace(REG_AROUND_QUOTE, '');
-            value = JSON.parse(value);
+            value = JSON.parse(value) as string;
         }
     } catch (e) {
         //
     }
-    return value;
+    return value as unknown;
 };
 
 /**
@@ -25,7 +25,7 @@ export const parseJavaScriptTypeValue = (value?: string) => {
  * @throws InvalidConfigError
  */
 export const parseConfig = (config: MysqlConfig) => {
-    let res: PoolConfig;
+    let res: PoolOptions;
     if (typeof config === 'string') {
         const [, user = 'root', password, host = 'localhost', port = '3306', database, query] =
             config.match(REG_CONNECTION_STR)!;

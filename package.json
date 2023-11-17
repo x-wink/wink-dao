@@ -32,7 +32,6 @@
         }
     },
     "scripts": {
-        "dev": "ts-node docs/main.ts",
         "build": "tsc && vite build",
         "version": "conventional-changelog -p angular -i CHANGELOG.md -s && git add CHANGELOG.md",
         "release": "bumpp package.json --commit \"release: v%s\" --push --all --tag && pnpm run build && pnpm publish --access public",
@@ -41,6 +40,7 @@
         "prepare": "husky install"
     },
     "peerDependencies": {
+        "@xwink/utils": "^1.0.0",
         "mysql": "^2.18.1"
     },
     "devDependencies": {

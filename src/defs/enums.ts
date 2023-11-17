@@ -11,13 +11,21 @@ export enum DaoErrorType {
      */
     INVALID_TYPE = 101,
     /**
+     * 数据库连接失败
+     */
+    CONNECT_FAILD = 200,
+    /**
      * SQL语法错误
      */
-    SQL_SYNTAX_ERROR = 200,
+    SQL_SYNTAX_ERROR = 201,
     /**
      * 数据表不存在
      */
-    NO_SUCH_TABLE = 201,
+    NO_SUCH_TABLE = 202,
+    /**
+     * 数据为空
+     */
+    NO_DATA = 300,
     /**
      * 没有特殊处理
      */
@@ -37,6 +45,10 @@ export enum DaoErrorInfo {
      */
     INVALID_TYPE = '数据列类型错误',
     /**
+     * 数据库连接失败
+     */
+    CONNECT_FAILD = '数据库连接失败',
+    /**
      * SQL语法错误
      */
     SQL_SYNTAX_ERROR = 'SQL语法错误',
@@ -45,23 +57,13 @@ export enum DaoErrorInfo {
      */
     NO_SUCH_TABLE = '数据表不存在',
     /**
+     * 数据为空
+     */
+    NO_DATA = '数据为空',
+    /**
      * 没有特殊处理
      */
     UNHANDLE = '数据库异常',
-}
-
-/**
- * 逻辑删除状态
- */
-export enum DelStatus {
-    /**
-     * 未删除
-     */
-    NORMAL = 0,
-    /**
-     * 已删除
-     */
-    REMOVED = 1,
 }
 
 /**
@@ -76,9 +78,8 @@ export enum AutoTablePolicies {
      * 数据表不存在时会自动创建，已存在则不干涉
      */
     CREATE = 1,
-    // TODO 实现后修改注释
     /**
-     * 数据表不存在时会自动创建，结构发生变化时会自动更新，生产环境慎用！（暂未实现）
+     * 数据表不存在时会自动创建，结构发生变化时会自动更新，生产环境慎用！
      */
     UPDATE = 2,
 }

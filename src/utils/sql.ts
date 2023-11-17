@@ -1,63 +1,11 @@
-import { useAutoIncrementId } from '.';
-import { ColumnDefine, TableDefine } from '../types';
+import type { ColumnDefine, TableDefine } from '../types';
+import { concat, compare, useAutoIncrementId } from '@xwink/utils';
 import { ColumnType } from '../defs';
-
 /**
  * 获取使用反引号包裹的名称，防止名称为数据库保留关键字
  * @example secureName('name') === '`name`'
  */
 export const secureName = (name?: string) => (name ? `\`${name}\`` : '');
-
-/**
- * 使用空格拼接SQL，忽略空字符串
- * @param parts SQL片段
- */
-export function concatSql(parts: string[]): string;
-/**
- * 拼接SQL，忽略空字符串，默认使用空格拼接
- * @param parts SQL片段
- * @param step 连接符
- */
-export function concatSql(parts: string[], step: string): string;
-/**
- * 使用空格拼接SQL，默认忽略空字符串
- * @param parts SQL片段
- * @param ignoreEmpty 是否忽略空字符串，默认true
- */
-export function concatSql(parts: string[], ignoreEmpty: boolean): string;
-/**
- * 拼接SQL，默认使用空格拼接，默认忽略空字符串
- * @param parts SQL片段
- * @param step 连接符，默认使用空格
- * @param ignoreEmpty 是否忽略空字符串，默认true
- */
-export function concatSql(parts: string[], step: string, ignoreEmpty: boolean): string;
-export function concatSql(parts: string[], stepOrIgnroeEmpty: string | boolean = ' ', ignoreEmpty = true) {
-    return (ignoreEmpty && stepOrIgnroeEmpty !== false ? parts.filter(Boolean) : parts).join(
-        typeof stepOrIgnroeEmpty === 'string' ? stepOrIgnroeEmpty : ' '
-    );
-}
-/**
- * 解析名字和别名
- * @param express sql名称表达式
- */
-export const parseAliasExpress = (express: string) => {
-    let arr = express.split(/\s+as\s+/),
-        name = express,
-        alias;
-    if (arr.length > 1) {
-        name = arr[0];
-        alias = arr[1];
-    } else {
-        arr = express.split(/\s+/);
-        if (arr.length > 1) {
-            name = arr[0];
-            alias = arr[1];
-        }
-    }
-    return { name, alias };
-};
-
 /**
  * 获取查询数据表定义的SQL
  * @param tableName 数据表名
@@ -83,24 +31,66 @@ export const genColumnDefineSql = (columnDefine: ColumnDefine) => {
     }${autoIncrement ? ' auto_increment' : ''}${comment ? ` comment ${JSON.stringify(comment)}` : ''}`;
 };
 
+/**
+ * 生成数据表主键约束定义SQL
+ * @param columnDefines 字段配置
+ */
+export const genPrimaryKeyDefineSql = (columnDefines: ColumnDefine[]) => {
+    const pks = columnDefines.filter((item) => item.primary).map((item) => secureName(item.name));
+    return `primary key (${pks.join(',')})`;
+};
+
 const autoId = useAutoIncrementId();
+/**
+ * 生成数据表唯一约束定义SQL
+ * @param columnDefines 字段配置
+ */
+export const genUniqueKeyDefineSql = (columnDefines: ColumnDefine[]) => {
+    return columnDefines
+        .filter((item) => item.unique)
+        .map((item) => `unique index ${secureName(`uk_${autoId()}`)}(${secureName(item.name)})`);
+};
+
 /**
  * 生成数据表的定义SQL
  * @param database 数据库名
- * @param tableName 数据表名
  * @param tableDefine 数据表配置
- * @param isEntityTable 是否为实体类表，否则为关系中间表，关系到是否添加实体基础字段和主键的创建
  */
 export const genTableDefineSql = (database: string, tableDefine: TableDefine) => {
     const { name: tableName, columnDefines, charset } = tableDefine;
-    const cols = columnDefines.map((item) => genColumnDefineSql(item));
-    const pks = columnDefines.filter((item) => item.primary).map((item) => secureName(item.name));
-    const colsSql = cols.join(',\n');
-    const pkSql = `primary key (${pks.join(',')})`;
-    const uksSql = columnDefines
-        .filter((item) => item.unique)
-        .map((item) => `unique index ${secureName(`uk_${autoId()}`)}(${secureName(item.name)})`);
-    return `create table if not exists ${secureName(database)}.${secureName(tableName)} (\n${[colsSql, pkSql, ...uksSql]
-        .filter(Boolean)
-        .join(',\n')}\n)engine=InnoDB${charset ? ` default charset ${charset}` : ''};`;
+    const cols = concat(
+        columnDefines.map((item) => genColumnDefineSql(item)),
+        ',\n'
+    );
+    const pk = genPrimaryKeyDefineSql(columnDefines);
+    const uks = genUniqueKeyDefineSql(columnDefines);
+    return `create table if not exists ${secureName(database)}.${secureName(tableName)} (\n
+                ${[cols, pk, ...uks].filter(Boolean).join(',\n')}\n
+                )engine=InnoDB${charset ? ` default charset ${charset}` : ''};`;
+};
+
+/**
+ * 生成数据表的修改SQL
+ * @param database 数据库名
+ * @param oldDefine 旧数据表配置
+ * @param newDefine 新数据表配置
+ */
+export const genTableAlterSql = (database: string, oldDefine: TableDefine, newDefine: TableDefine) => {
+    const cols = concat(
+        newDefine.columnDefines.map((item) => {
+            const old = oldDefine.columnDefines.find((col) => col.name === item.name);
+            const isSame = old && compare(old, item, ['unique']);
+            return isSame ? '' : concat([old ? 'modify column' : 'add column', genColumnDefineSql(item)]);
+        }),
+        ',\n'
+    );
+    const pk = concat(['add', genPrimaryKeyDefineSql(newDefine.columnDefines)]);
+    const uks = genUniqueKeyDefineSql(newDefine.columnDefines).map((item) => concat(['add unique index', item]));
+
+    const existsPk = oldDefine.columnDefines.filter((item) => item.primary).length;
+    const constraints = concat(oldDefine.constraints?.map((item) => concat(['drop index', item])) ?? [], ',\n');
+    return `alter table ${secureName(database)}.${secureName(newDefine.name)}\n${concat(
+        [existsPk ? 'drop primary key' : '', constraints, cols, pk, ...uks],
+        ',\n'
+    )}`;
 };
