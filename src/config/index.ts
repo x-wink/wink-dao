@@ -50,9 +50,8 @@ export const getDefaultLength = (type: ColumnType) => {
             length = [0];
             break;
         default:
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             err = type;
-            break;
+            throw err;
     }
     return length;
 };
