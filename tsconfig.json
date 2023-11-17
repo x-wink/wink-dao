@@ -31,7 +31,9 @@
         "src/**/*.d.ts",
         "src/**/*.tsx",
         "src/**/*.vue",
+        "tests/**/*.ts",
         "vite.config.ts",
+        "vitest.config.ts",
         "env.d.ts",
         "package.json"
     ]
