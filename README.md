@@ -1,12 +1,9 @@
-<h1 align="center">欢迎使用我的库项目模板 👋</h1>
-<p>
-  <img alt="Version" src="https://img.shields.io/badge/version-1.0.0-blue.svg?cacheSeconds=2592000" />
-  <a href="https://github.com/x-wink/libary-template#readme" target="_blank">
-    <img alt="Documentation" src="https://img.shields.io/badge/documentation-yes-brightgreen.svg" />
-  </a>
-</p>
+# 😉 欢迎使用我的库项目模板
 
-## ⬇️ 使用方式
+![版本](https://img.shields.io/badge/version-1.0.0-blue.svg?cacheSeconds=2592000)
+[![文档](https://img.shields.io/badge/documentation-yes-brightgreen.svg)](https://github.com/x-wink/libary-template#readme)
+
+## 💎 使用方式
 
 ```cmd
 npx degit x-wink/libary-template#main my-project
@@ -14,6 +11,14 @@ cd my-project
 npm install
 npm run dev
 ```
+
+## 📖 快速入门
+
+## 📦 进阶使用
+
+## 📄 待办列表
+
+## 🆘问题求助
 
 ## 🎯 框架依赖
 
@@ -34,6 +39,8 @@ npm run dev
 
 ## 🤝 贡献
 
-欢迎提交代码、提出问题和功能建议<br /> [反馈地址](https://github.com/x-wink/libary-template/issues)
+欢迎大家随时[点击这里](https://github.com/x-wink/libary-template/issues)为我提供贡献、问题和功能建议
 
-如果这个项目对你有帮助的话就点个小星星吧 ⭐️
+## 😘 感谢支持
+
+如果觉得项目对你有帮助，就帮我点个小星星吧~ ⭐️
