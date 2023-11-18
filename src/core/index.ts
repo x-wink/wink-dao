@@ -27,6 +27,7 @@ import {
 import { parseConfig } from '../utils';
 
 export const useDao = (options: DaoOptions) => {
+    // TODO 优化配置解析
     const {
         logger = console,
         debug = false,
@@ -145,15 +146,17 @@ export const useDao = (options: DaoOptions) => {
      * @throws DaoError
      */
     const exec = async <T = ExecResult>(sql: string, values: unknown[] = []) => {
-        await getConnection(
-            ['insert', 'update', 'delete', 'create', 'alter'].includes(sql.split(' ')[0].toLocaleLowerCase())
+        const autoTransaction = ['insert', 'update', 'delete', 'create', 'alter'].includes(
+            sql.split(' ')[0].toLocaleLowerCase()
         );
+        await getConnection(autoTransaction);
         values = beforeExec(values);
         debug && logger.debug(sql);
         debug && logger.debug(values, '\n');
         try {
             const [rows, fields] = await connection.query(sql, values);
             const res = afterExec<T>(rows, fields);
+            debug && autoTransaction && logger.debug(rows, fields, '\n');
             !manualBegin && commit();
             return res;
         } catch (e) {
