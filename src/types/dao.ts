@@ -15,8 +15,8 @@ export type WinkDao = ReturnType<typeof useDao>;
 
 export interface LogicDeletionOptions {
     controlField: string;
-    normalValue: string;
-    removedValue: string;
+    normalValue: number;
+    removedValue: number;
 }
 export type QueryReturnType = Awaited<ReturnType<PoolConnection['query']>>;
 
