@@ -37,7 +37,7 @@
         "coverage": "vitest run --coverage",
         "build": "tsc && vite build",
         "version": "conventional-changelog -p angular -i CHANGELOG.md -s && git add CHANGELOG.md",
-        "release": "bumpp package.json --commit \"release: v%s\" --push --all --tag && pnpm run build && pnpm publish --access public",
+        "release": "pnpm test && pnpm build && bumpp package.json --commit \"release: v%s\" --push --all --tag && pnpm publish --access public",
         "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
         "prettier": "prettier --write ./**/*.{vue,ts,tsx,js,jsx,css,less,json,md,html}",
         "prepare": "husky install"
