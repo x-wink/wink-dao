@@ -1,9 +1,9 @@
-# 👋 欢迎使用 @xwink/dao
+# 😉 欢迎使用 @xwink/dao
 
 ![版本](https://img.shields.io/badge/version-0.0.1-blue.svg?cacheSeconds=2592000)
 [![文档](https://img.shields.io/badge/documentation-yes-brightgreen.svg)](https://github.com/x-wink/wink-dao#readme)
 
-## 👇 安装依赖
+## 💎 安装依赖
 
 ```cmd
 npm install --save @xwink/dao
@@ -161,7 +161,7 @@ const count = await dao.revoke({ table, where: { id } });
 const count = await dao.deletion({ table, where: { id } });
 ```
 
-## 📦 使用ORM
+## 📦 进阶使用
 
 ```ts
 import { useOrm, AutoTablePolicies, ColumnType } from '@xwink/dao';
@@ -316,13 +316,15 @@ const successful = await repository.deletion([id]);
 const entities = await repository.exec<TestEntity[]>(`select * from ${table} where sex = ? sort by age desc`, [0]);
 ```
 
-## 😉 TODO
+## 📄 待办列表
 
 -   [ ] 【feat-relaction】处理关联关系
 -   [ ] 【refactor-plugin】抽离`Mysql`耦合，改为插件形式
 -   [ ] 【refactor-adapter】支持适配多种数据库
 -   [ ] 【feat-docs】新增`vitepress`文档项目并完善文档
 -   [ ] 【chore】寻找伙（da）伴（lao）一起合作
+
+## 🆘问题求助
 
 ## 🎯 框架依赖
 
