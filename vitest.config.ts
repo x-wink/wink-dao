@@ -10,7 +10,7 @@ export default (configEnv: ConfigEnv) => {
                 dir: './tests',
                 logHeapUsage: true,
                 coverage: {
-                    reporter: ['json'],
+                    reporter: ['html'],
                 },
             },
         })
