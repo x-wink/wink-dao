@@ -1,3 +1,4 @@
+import type { QueryBuilder } from '..';
 import { AutoTablePolicies } from '../defs';
 import type {
     DeletionOptions,
@@ -79,6 +80,9 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
         const detail = (id: number) => {
             return dao.detail<T>(name, id);
         };
+        const query = async <T>(builder: QueryBuilder) => {
+            return dao.query<T>(builder);
+        };
         const select = async (options?: Partial<SelectOptions>) => {
             return dao.select<T>(resolveSelectOptions(options));
         };
@@ -112,6 +116,7 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
         return {
             get,
             detail,
+            query,
             select,
             count,
             page,
