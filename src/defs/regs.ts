@@ -5,19 +5,15 @@
 export const REG_CONNECTION_STR = /^mysql:\/\/(.+?):(.+?)@(.+?):(\d+)\/(.+?)(\?.+)?$/;
 
 /**
- * 全局匹配大写字母
- */
-export const REG_UPPER_CHARS = /[A-Z]/g;
-
-/**
- * 首字母
- */
-export const REG_FIRST_CHAR = /^./;
-
-/**
  * 字符串首尾引号
  */
 export const REG_AROUND_QUOTE = /(^'|")|('|"$)/g;
+
+/** Date默认序列化格式 */
+export const REG_DATE_STRING = /\d+-\d+-\d+T\d+:\d+:\d+\.\d+Z/;
+
+/** 匹配数据表不存在异常时错误信息中的表名（1） */
+export const REG_TABLE_NAME_IN_ERROR = /Table '(.*?)'/;
 
 /**
  * 匹配数据表定义SQL中的表名（1）

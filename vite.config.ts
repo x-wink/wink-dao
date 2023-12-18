@@ -18,7 +18,7 @@ export default (configEnv: ConfigEnv) => {
             }),
         ],
         build: {
-            sourcemap: false,
+            sourcemap: true,
             lib: {
                 formats: ['es', 'cjs', 'umd'],
                 fileName: (format) => {
@@ -31,10 +31,11 @@ export default (configEnv: ConfigEnv) => {
                 name: packageJson.name.replace(/-(\w)/gi, (_, v) => v.toUpperCase()),
             },
             rollupOptions: {
-                external: ['mysql'],
+                external: ['mysql2', 'mysql2/promise'],
                 output: {
                     globals: {
-                        mysql: 'mysql',
+                        mysql: 'mysql2',
+                        'mysql2/promise': 'mysql2/promise',
                     },
                 },
             },

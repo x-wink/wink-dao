@@ -1,6 +1,6 @@
-import { PoolConfig } from 'mysql';
+import type { PoolOptions } from 'mysql2';
 import { DaoErrorInfo, DaoErrorType } from './enums';
-import { ExecInfo } from '../types';
+import type { ExecInfo } from '../types';
 
 /**
  * Dao错误
@@ -22,8 +22,8 @@ export class DaoError<T = unknown> extends Error {
 /**
  * 无效连接配置错误
  */
-export class InvalidConfigError extends DaoError<PoolConfig> {
-    constructor(config: PoolConfig, cuase?: unknown) {
+export class InvalidConfigError extends DaoError<PoolOptions> {
+    constructor(config: PoolOptions, cuase?: unknown) {
         super(DaoErrorType.INVALID_CONFIG, DaoErrorInfo.INVALID_CONFIG, config, cuase);
     }
 }
@@ -38,7 +38,16 @@ export class InvalidTypeError extends DaoError<string> {
 }
 
 /**
- * 数据表不存在错误
+ * 获取数据库连接失败错误
+ */
+export class ConnectFaildError extends DaoError<string> {
+    constructor(cuase?: unknown) {
+        super(DaoErrorType.CONNECT_FAILD, DaoErrorInfo.CONNECT_FAILD, void 0, cuase);
+    }
+}
+
+/**
+ * SQL语法异常存在错误
  */
 export class SqlSyntaxError extends DaoError<ExecInfo> {
     constructor(info: ExecInfo, cuase?: unknown) {
@@ -56,7 +65,16 @@ export class NoSuchTableError extends DaoError<string> {
 }
 
 /**
- * 数据表不存在错误
+ * 数据为空错误
+ */
+export class NoDataError extends DaoError<string> {
+    constructor(name: string, cuase?: unknown) {
+        super(DaoErrorType.NO_DATA, DaoErrorInfo.NO_DATA, name, cuase);
+    }
+}
+
+/**
+ * 未处理错误
  */
 export class UnhandleError extends DaoError<ExecInfo> {
     constructor(info?: ExecInfo, cuase?: unknown) {

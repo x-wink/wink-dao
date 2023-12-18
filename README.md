@@ -1,29 +1,22 @@
-<h1 align="center">欢迎使用WinkDao 👋</h1>
-<p>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.x-blue.svg?cacheSeconds=2592000" />
-  <a href="https://github.com/x-wink/wink-dao#readme" target="_blank">
-    <img alt="Documentation" src="https://img.shields.io/badge/documentation-yes-brightgreen.svg" />
-  </a>
-</p>
+# 😉 欢迎使用 @xwink/dao
 
-## 📚 各版本文档
+![版本](https://img.shields.io/badge/version-0.0.1-blue.svg?cacheSeconds=2592000)
+[![文档](https://img.shields.io/badge/documentation-yes-brightgreen.svg)](https://github.com/x-wink/wink-dao#readme)
 
--   ### [v1.x](https://github.com/x-wink/wink-dao/tree/main/documents/v1.md)
--   ### [v2.x](https://github.com/x-wink/wink-dao#readme)
-
-## 👇 安装依赖
+## 💎 安装依赖
 
 ```cmd
-npm install --save wink-dao
-pnpm add --save wink-dao
+npm install --save @xwink/dao
+pnpm add --save @xwink/dao
 ```
 
-## 📖 示例代码
+## 📖 快速入门
+
+### 创建实例
 
 ```ts
-import { useDao, useOrm, AutoTablePolicies, ColumnType, AutoIncrementEntity, ExecResult } from 'wink-dao';
+import { useDao, QueryBuilder } from '@xwink/dao';
 
-// DAO基础操作库
 const dao = useDao({
     config: {
         host: '',
@@ -32,96 +25,310 @@ const dao = useDao({
         password: '',
         datebase: '',
     },
+    debug: true,
+    removeOptions: {
+        controlField: 'del_flag',
+        normalValue: 0,
+        removedValue: 1,
+    },
 });
-const { exec, get, select, insert, update, remove, revoke } = dao;
-// 使用ORM框架
-const { registRepository } = useOrm(dao, {
-    // 开启自动托管数据表后会自动创建表,表名会自动增加前缀t_，并将表名和字段名的驼峰命名转为下划线
-    // TODO 自动同步更新表结构暂未实现
-    autoTablePolicy: AutoTablePolicies.CREATE,
-});
-// 定义Menu模型，推荐使用自增主键
-class Menu extends AutoIncrementEntity {
-    name?: string;
-    code?: string;
-    sort?: number;
-    isDirectory?: boolean;
-    constructor(data?: Partial<Menu>) {
-        super();
-        Object.assign(this, data);
-    }
+```
+
+### 创建数据表
+
+```ts
+interface TestEntity {
+    id: number;
+    name: string;
+    phone: string;
+    age: number;
+    sex: number;
+    delFlag: boolean;
+    createTime: Date;
+    updateTime: Date;
+    removeTime: Date;
 }
-// 配置Menu仓库
-const repository = registRepository({
-    name: 'menu',
-    columnDefiens: [
+const table = 't_user';
+await dao.exec(`
+    create table if not exists ${table} (
+        id int primary key auto_increment,
+        name varchar(255) not null,
+        phone varchar(20) not null,
+        age int not null default 0,
+        sex int not null default 0,
+        del_flag tinyint not null default 0,
+        create_time datetime not null default now(),
+        update_time datetime,
+        remove_time datetime,
+        unique (phone)
+    )
+`);
+```
+
+### 删除数据表
+
+```ts
+await dao.exec(`drop table if exists ${table}`);
+```
+
+### 插入数据
+
+```ts
+const data: Partial<TestEntity> = {
+    name: 'test',
+    phone: '10086',
+};
+// 单条数据
+const id = await dao.insert({ table, data: [data] });
+// 批量插入
+await dao.insert({
+    table,
+    data: Array.from({ length: total - 1 }, (_, index) => ({
+        name: Math.random().toString(36).substring(2, 8),
+        phone: 1.32e10 + index,
+        age: index,
+        sex: index % 2,
+    })),
+});
+```
+
+### 统计数量
+
+```ts
+const count = await dao.count({ table, where: { sex: 0 } });
+```
+
+### 主键查询
+
+```ts
+const entity = await dao.detail<TestEntity>(table, id);
+```
+
+### 查询单条
+
+```ts
+const entity = await dao.get<TestEntity>({ table, where: { id } });
+```
+
+### 条件查询
+
+```ts
+const entities = await dao.select<TestEntity>({ table, where: { sex: 0 } });
+```
+
+### 分页查询
+
+```ts
+const page = await dao.page<TestEntity>({ table, where: { sex: 0 }, page: [1, 10] });
+console.info(page.list);
+console.info(page.total);
+```
+
+### 高级查询
+
+```ts
+const condition = { name: 'test' };
+const builder = new QueryBuilder()
+    .from(table)
+    .equal('sex', 0, () => typeof condition.sex !== 'undefined')
+    .like('name', condition.name, () => typeof condition.name !== 'undefined')
+    .orderBy('age', 'desc')
+    .page(1, 10);
+const entities = await dao.query<TestEntity>(builder);
+```
+
+### 更新数据
+
+```ts
+const count = await dao.update({ table, data: { name: 'new test' }, where: { id } });
+```
+
+### 逻辑删除
+
+```ts
+const count = await dao.remove({ table, where: { id } });
+```
+
+### 逻辑恢复
+
+```ts
+const count = await dao.revoke({ table, where: { id } });
+```
+
+### 物理删除
+
+```ts
+const count = await dao.deletion({ table, where: { id } });
+```
+
+## 📦 进阶使用
+
+```ts
+import { useOrm, AutoTablePolicies, ColumnType } from '@xwink/dao';
+const orm = useOrm(dao, { autoTablePolicy: AutoTablePolicies.UPDATE, normalrizeName: true });
+```
+
+### 创建仓库
+
+```ts
+const repository = registRepository<TestEntity>({
+    name: table,
+    columnDefines: [
+        {
+            name: 'id',
+            type: ColumnType.INT,
+            autoIncrement: true,
+            primary: true,
+            required: true,
+            comment: '自增主键',
+        },
+        {
+            name: 'delFlag',
+            type: ColumnType.BOOLEAN,
+            required: true,
+            defaultValue: '0',
+            comment: '逻辑删除标识',
+        },
+        {
+            name: 'createTime',
+            type: ColumnType.DATETIME,
+            required: true,
+            defaultValue: 'CURRENT_TIMESTAMP',
+            comment: '创建时间',
+        },
+        {
+            name: 'updateTime',
+            type: ColumnType.DATETIME,
+            comment: '修改时间',
+        },
+        {
+            name: 'removeTime',
+            type: ColumnType.DATETIME,
+            comment: '移除时间',
+        },
         {
             name: 'name',
             type: ColumnType.STRING,
-            length: 20,
+            length: 64,
             required: true,
         },
         {
-            name: 'code',
+            name: 'phone',
             type: ColumnType.STRING,
             length: 20,
             required: true,
-            primary: true,
             unique: true,
         },
         {
-            name: 'sort',
+            name: 'sex',
             type: ColumnType.INT,
-            required: true,
             defaultValue: '0',
+            required: true,
         },
         {
-            name: 'isDirectory',
-            type: ColumnType.BOOLEAN,
+            name: 'age',
+            type: ColumnType.INT,
+            defaultValue: '0',
             required: true,
-            defaultValue: 'false',
         },
     ],
 });
-// 实际应该在项目启动时初始化
-await repository.init.run();
-// 插入数据
-const id = await repository.create(new Menu({ code: 'test', name: '测试' }));
-// 主键查询
-const menu = await repository.get<Menu>(id);
-// 更新数据
-menu.sort = 10;
-let isSuccess: boolean = await repository.update(menu);
-// 条件查询
-const list: Menu[] = await repository.select<Menu>({ code: 'test' });
-// 逻辑删除
-isSuccess = await repository.remove(id);
-// 逻辑恢复
-isSuccess = await repository.revoke(id);
-// 自定义查询
-const menus: Menu[] = await repository.exec<Menu[]>('select * from t_menu where sort > ?', [0]);
-// 自定义操作
-const result: ExecResult = await repository.exec('delete from menu where id = ?', [id]);
-// result.affectedRows === 1
 ```
 
-## 😉 TODO
+### 主键查询
 
--   [x] 【feat-orm】新增`ORM`框架
--   [ ] 【feat-relaction】处理关联关系（很复杂）
+```ts
+const entity = await repository.detail(id);
+```
+
+### 单条查询
+
+```ts
+const entity = await repository.get({ where: { id } });
+```
+
+### 条件查询
+
+```ts
+const entities = await repository.select({ where: { sex: 0 } });
+```
+
+### 数量查询
+
+```ts
+const count = await repository.count({ where: { sex: 0 } });
+```
+
+### 分页查询
+
+```ts
+const page = await repository.page({ where: { sex: 0 }, page: [1, 10] });
+console.info(page.list);
+console.info(page.total);
+```
+
+### 高级查询
+
+```ts
+const condition = { name: 'test' };
+const builder = new QueryBuilder()
+    .from(table)
+    .equal('sex', 0, () => typeof condition.sex !== 'undefined')
+    .like('name', condition.name, () => typeof condition.name !== 'undefined')
+    .orderBy('age', 'desc')
+    .page(1, 10);
+const entities = await repository.query<TestEntity>(builder);
+```
+
+### 插入数据
+
+```ts
+const id = await repository.create([data]);
+```
+
+### 更新数据
+
+```ts
+const successful = await repository.update(data, { where: { id } });
+```
+
+### 逻辑删除
+
+```ts
+const successful = await repository.remove([id]);
+```
+
+### 逻辑恢复
+
+```ts
+const successful = await repository.revoke([id]);
+```
+
+### 物理删除
+
+```ts
+const successful = await repository.deletion([id]);
+```
+
+### 执行自定义语句
+
+```ts
+const entities = await repository.exec<TestEntity[]>(`select * from ${table} where sex = ? sort by age desc`, [0]);
+```
+
+## 📄 待办列表
+
+-   [ ] 【feat-relaction】处理关联关系
 -   [ ] 【refactor-plugin】抽离`Mysql`耦合，改为插件形式
 -   [ ] 【refactor-adapter】支持适配多种数据库
--   [ ] 【perf-dao】优化`DAO`基础能力
--   [ ] 【feat-business】封装分页查询等常用业务能力
--   [ ] 【feat-generate】参考`JPA`实现通过函数名特殊命名规则生成复杂查询
 -   [ ] 【feat-docs】新增`vitepress`文档项目并完善文档
--   [ ] 【refactor-test】改用`vitest`测试用例完善开发发布流程
--   [ ] 【feat-update】实现同步更新表结构（尝试了一下比想象中复杂）
 -   [ ] 【chore】寻找伙（da）伴（lao）一起合作
+
+## 🆘问题求助
 
 ## 🎯 框架依赖
 
--   [mysql](https://github.com/mysqljs/mysql#readme) MySQL 数据库协议
+-   [mysql2](https://www.npmjs.com/package/mysql2) MySQL 数据库协议
 
 ## 👤 作者
 
@@ -137,7 +344,3 @@ const result: ExecResult = await repository.exec('delete from menu where id = ?'
 ## 😘 感谢支持
 
 如果觉得项目对你有帮助，就帮我点个小星星吧~ ⭐️
-
----
-
-本文档使用[readme-md-generator](https://github.com/kefranabg/readme-md-generator)模板生成

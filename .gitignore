@@ -1,6 +1,7 @@
 node_modules
 dist
 /types
+/coverage
 stats.html
 *.local
 package-lock.json

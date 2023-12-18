@@ -6,6 +6,21 @@
     },
     "eslint.enable": true,
     "eslint.validate": ["vue", "javascript", "typescript", "javascriptreact", "typescriptreact"],
-    "editor.mouseWheelZoom": true,
-    "editor.fontSize": 14
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "175.178.54.28",
+            "port": 3306,
+            "driver": "MySQL",
+            "name": "腾讯云24",
+            "database": "personal-website",
+            "username": "root",
+            "password": "Aa12300.",
+            "connectionTimeout": 5000
+        }
+    ]
 }
