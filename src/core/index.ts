@@ -89,53 +89,39 @@ export const useDao = (options: DaoOptions) => {
     } = hooks ?? {};
     const config = parseConfig(options.config);
     const pool = createPool(config);
-    let connection: PoolConnection,
-        hasTransaction = false,
-        manualBegin = false;
+    let connection: PoolConnection | undefined;
 
     /**
      * 获取连接
      */
-    const getConnection = async (begin = true) => {
-        if (!connection) {
-            try {
-                connection = await pool.getConnection();
-            } catch (e) {
-                throw new ConnectFaildError(e);
-            }
-        }
-        if ((hasTransaction = begin)) {
-            connection.beginTransaction();
-            !manualBegin && logger.debug('自动开启事务');
+    const getConnection = async () => {
+        try {
+            connection ??= await pool.getConnection();
+        } catch (e) {
+            throw new ConnectFaildError(e);
         }
     };
     /**
      * 开启事务
      */
     const beginTransaction = async () => {
-        manualBegin = true;
         await getConnection();
-        logger.debug('手动开启事务');
+        connection!.beginTransaction();
+        logger.debug('开启事务');
     };
     /**
      * 提交事务
      */
     const commit = () => {
-        if (hasTransaction) {
-            manualBegin = false;
-            connection?.commit();
-            logger.debug('提交事务');
-        }
+        connection?.commit();
+        logger.debug('提交事务', !!connection);
     };
     /**
      * 回滚事务
      */
     const rollback = () => {
-        if (hasTransaction) {
-            manualBegin = false;
-            connection?.rollback();
-            logger.debug('回滚事务');
-        }
+        connection?.rollback();
+        logger.debug('回滚事务', !!connection);
     };
     /**
      * 执行SQL语句
@@ -145,32 +131,36 @@ export const useDao = (options: DaoOptions) => {
      * @example exec('select * from user where id = ?', [1]);
      * @throws DaoError
      */
-    const exec = async <T = ExecResult>(sql: string, values: unknown[] = []) => {
-        const autoTransaction = ['insert', 'update', 'delete', 'create', 'alter'].includes(
-            sql.split(' ')[0].toLocaleLowerCase()
-        );
-        await getConnection(autoTransaction);
+    const exec = async <T = ExecResult>(sql: string, values: unknown[] = []): Promise<T> => {
+        const hasConnection = !!connection;
+        await getConnection();
+        if (!connection) {
+            throw new UnhandleError();
+        }
         values = beforeExec(values);
         debug && logger.debug(sql);
         debug && logger.debug(values, '\n');
         try {
             const [rows, fields] = await connection.query(sql, values);
             const res = afterExec<T>(rows, fields);
-            debug && autoTransaction && logger.debug(rows, fields, '\n');
-            !manualBegin && commit();
+            debug && logger.debug(rows, fields, '\n');
             return res;
         } catch (e) {
-            !manualBegin && rollback();
             const err = e as QueryError;
             if (['ER_NO_SUCH_TABLE'].includes(err.code)) {
                 const tableName = err.message.match(REG_TABLE_NAME_IN_ERROR)![1].split('.')[1];
                 throw new NoSuchTableError(tableName, err);
             } else if (['ER_PARSE_ERROR'].includes(err.code)) {
                 throw new SqlSyntaxError({ sql, values }, err);
+            } else if (err.message.includes('connection is in closed state')) {
+                debug && logger.debug('当前连接已关闭，重新获取连接');
+                connection = void 0;
+                return exec(sql, values);
+            } else {
+                throw new UnhandleError({ sql, values }, err);
             }
-            throw new UnhandleError({ sql, values }, err);
         } finally {
-            !manualBegin && connection.release();
+            !hasConnection && connection?.release();
         }
     };
 

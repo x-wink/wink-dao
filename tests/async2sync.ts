@@ -14,9 +14,7 @@ const getUserInfo = (name: string) => {
     });
 };
 
-interface AsyncFunction<R, P extends unknown[]> {
-    (...args: P): Promise<R>;
-}
+type AsyncFunction<R, P extends unknown[]> = (...args: P) => Promise<R>;
 const run = <R, P extends unknown[]>(fn: AsyncFunction<R, P>) => {
     let task: Promise<void>, res: R;
     const proxy = (...args: P): R => {
