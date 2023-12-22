@@ -1,6 +1,6 @@
 {
     "name": "@xwink/dao",
-    "version": "0.0.2-beta.0",
+    "version": "0.0.2-beta.1",
     "keywords": [
         "dao",
         "nodejs",
@@ -47,7 +47,7 @@
         "mysql2": "^3.6.2"
     },
     "dependencies": {
-        "@xwink/sql-builder": "^1.0.1"
+        "@xwink/sql-builder": "^1.0.2"
     },
     "devDependencies": {
         "@commitlint/cli": "^18.4.1",
