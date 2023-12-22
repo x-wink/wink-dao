@@ -1,3 +1,9 @@
+## [0.0.2-beta.3](https://github.com/x-wink/wink-dao/compare/v0.0.2-beta.2...v0.0.2-beta.3) (2023-12-22)
+
+### Bug Fixes
+
+-   double columns default length ([ea8e530](https://github.com/x-wink/wink-dao/commit/ea8e53000a0942e33d46cffd9085f729828668b7))
+
 ## [0.0.2-beta.2](https://github.com/x-wink/wink-dao/compare/v0.0.2-beta.0...v0.0.2-beta.2) (2023-12-22)
 
 ### Bug Fixes
