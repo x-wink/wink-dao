@@ -26,7 +26,7 @@ export const getDefaultLength = (type: ColumnType) => {
             length = [4];
             break;
         case ColumnType.DOUBLE:
-            length = [8];
+            length = [8, 0];
             break;
         case ColumnType.DECIMAL:
             length = [10, 0];
