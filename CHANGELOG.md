@@ -1,3 +1,9 @@
+## [0.0.2-beta.2](https://github.com/x-wink/wink-dao/compare/v0.0.2-beta.0...v0.0.2-beta.2) (2023-12-22)
+
+### Bug Fixes
+
+-   Condition values exclude Field type value ([21d5fe0](https://github.com/x-wink/wink-dao/commit/21d5fe0623589a281da6e6c4b765656cf3dc5f7c))
+
 ## [0.0.2-beta.0](https://github.com/x-wink/wink-dao/compare/v0.0.1...v0.0.2-beta.0) (2023-12-20)
 
 ### Bug Fixes
