@@ -43,13 +43,10 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
 
         // 代理SQL执行
         const resolveSelectOptions = (options?: Partial<SelectOptions>): Required<SelectOptions> => {
-            const {
-                table = name,
-                fields = daoOptions?.fields ?? [],
-                where = {},
-                page = [1, 0],
-                ...rest
-            } = options ?? {};
+            const { table = name, fields = daoOptions?.fields ?? [], page = [1, 0], ...rest } = options ?? {};
+            const where = Object.fromEntries(
+                Object.entries(options?.where ?? {}).filter(([key]) => !daoOptions?.ignores?.includes(key))
+            );
             return { table, fields, where, page, ...rest };
         };
         const resolveInsertOptions = (options?: Partial<InsertOptions<T>>): Required<InsertOptions<T>> => {
