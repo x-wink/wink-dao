@@ -64,6 +64,7 @@ export const useDao = (options: DaoOptions) => {
                             row[field.name] = Boolean(row[field.name]);
                         };
                     } else if (
+                        field.type &&
                         [
                             Types.DECIMAL,
                             Types.DOUBLE,
