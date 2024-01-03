@@ -1,5 +1,6 @@
 import type { ColumnDefine, TableDefine } from '../types';
-import { concat, compare, useAutoIncrementId } from '@xwink/utils';
+import { concat, useAutoIncrementId } from '@xwink/utils';
+import compare from 'just-compare';
 import { ColumnType } from '../defs';
 /**
  * 获取使用反引号包裹的名称，防止名称为数据库保留关键字
@@ -79,18 +80,24 @@ export const genTableAlterSql = (database: string, oldDefine: TableDefine, newDe
     const cols = concat(
         newDefine.columnDefines.map((item) => {
             const old = oldDefine.columnDefines.find((col) => col.name === item.name);
-            const isSame = old && compare(old, item, ['unique']);
+            const isSame =
+                old && compare({ ...old, unique: false, primary: false }, { ...item, unique: false, primary: false });
             return isSame ? '' : concat([old ? 'modify column' : 'add column', genColumnDefineSql(item)]);
         }),
         ',\n'
     );
-    const pk = concat(['add', genPrimaryKeyDefineSql(newDefine.columnDefines)]);
+    const hasOldPk = oldDefine.columnDefines.filter((item) => item.primary).length;
+    const hasNewPk = newDefine.columnDefines.filter((item) => item.primary).length;
+
+    let pk = hasNewPk ? concat(['add', genPrimaryKeyDefineSql(newDefine.columnDefines)]) : '';
+    if (hasOldPk) {
+        pk = 'drop primary key,\n' + pk;
+    }
     const uks = genUniqueKeyDefineSql(newDefine.columnDefines).map((item) => concat(['add unique index', item]));
 
-    const existsPk = oldDefine.columnDefines.filter((item) => item.primary).length;
     const constraints = concat(oldDefine.constraints?.map((item) => concat(['drop index', item])) ?? [], ',\n');
     return `alter table ${secureName(database)}.${secureName(newDefine.name)}\n${concat(
-        [existsPk ? 'drop primary key' : '', constraints, cols, pk, ...uks],
+        [cols, pk, ...uks, constraints],
         ',\n'
     )}`;
 };

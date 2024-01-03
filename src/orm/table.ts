@@ -1,5 +1,6 @@
 import type { ColumnDefine, TableDefine, WinkDao } from '../types';
-import { unique, camel2Underline, compare } from '@xwink/utils';
+import { unique, camel2Underline } from '@xwink/utils';
+import compare from 'just-compare';
 import { getDefaultLength } from '../config';
 import {
     ColumnType,
