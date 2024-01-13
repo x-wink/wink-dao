@@ -360,6 +360,7 @@ export const useDao = (options: DaoOptions) => {
     return {
         config,
         logger,
+        removeOptions,
         get,
         select,
         detail,

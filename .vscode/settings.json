@@ -22,5 +22,6 @@
             "password": "Aa12300.",
             "connectionTimeout": 5000
         }
-    ]
+    ],
+    "nuxt.isNuxtApp": false
 }
