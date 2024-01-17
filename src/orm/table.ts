@@ -71,7 +71,7 @@ export const useAutoTable = (database: string, dao: WinkDao, normalrizeName: boo
                     normalrizeColumnDefine({
                         name: col[1],
                         type: col[2] as ColumnType,
-                        length: +col[4],
+                        length: col[4]?.split(',').map((item) => +item),
                         required: !!col[6],
                         autoIncrement: !!col[7],
                         defaultValue: col[9],
@@ -88,7 +88,7 @@ export const useAutoTable = (database: string, dao: WinkDao, normalrizeName: boo
                 pkNames.forEach((name) => {
                     res.columnDefines.find((item) => item.name === name)!.primary = true;
                 });
-            } else {
+            } else if (row) {
                 dao.logger.warn('暂未支持的数据表定义子语句', row);
             }
         });
@@ -122,14 +122,14 @@ export const useAutoTable = (database: string, dao: WinkDao, normalrizeName: boo
             length = [];
         }
         // 统一默认值
+        if (defaultValue === 'NULL') {
+            defaultValue = void 0;
+        }
         if (typeof defaultValue !== 'undefined') {
             if (type === ColumnType.BOOLEAN) {
                 defaultValue = String(+!!parseJavaScriptTypeValue(defaultValue));
             } else {
                 defaultValue = String(parseJavaScriptTypeValue(defaultValue));
-                if (defaultValue === 'NULL') {
-                    defaultValue = void 0;
-                }
             }
         }
         // 校验自增字段数据类型
@@ -199,6 +199,8 @@ export const useAutoTable = (database: string, dao: WinkDao, normalrizeName: boo
     };
     return {
         hasTable,
+        getTable,
+        parseTableDefineSql,
         normalrizeColumnDefine,
         normalrizeTableDefine,
         needUpdate,

@@ -30,7 +30,7 @@ export const REG_TABLE_DEFINE_INFO = /^\) ENGINE=(.+?)[\s\S]*?DEFAULT CHARSET=(.
  * @description name(1), type(2), length(4), required(6), autoIncrement(7), defaultValue(9), comment(11)
  */
 export const REG_TABLE_DEFINE_COLUMN =
-    /^\s*`(.+?)` (.+?)(\((\d+)\))?( unsigned)?( NOT NULL)?( AUTO_INCREMENT)?( DEFAULT (.+?))?( COMMENT '(.+?)')?,?$/i;
+    /^\s*`(.+?)` (.+?)(\(([\d,]+)\))?( unsigned)?( NOT NULL)?( AUTO_INCREMENT)?( DEFAULT (.+?))?( COMMENT '(.+?)')?,?$/i;
 
 /**
  * 匹配数据表定义SQL中的唯一键约束名称（1）和字段名（2）
