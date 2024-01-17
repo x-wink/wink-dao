@@ -141,7 +141,7 @@ export const useAutoTable = (database: string, dao: WinkDao, normalrizeName: boo
             type,
             length,
             autoIncrement,
-            required,
+            required: primary || required,
             primary,
             unique,
             defaultValue,
@@ -201,6 +201,7 @@ export const useAutoTable = (database: string, dao: WinkDao, normalrizeName: boo
         hasTable,
         normalrizeColumnDefine,
         normalrizeTableDefine,
+        needUpdate,
         createTable,
         updateTable,
     };
