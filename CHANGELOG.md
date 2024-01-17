@@ -1,3 +1,12 @@
+## [0.0.2](https://github.com/x-wink/wink-dao/compare/v0.0.2-beta.3...v0.0.2) (2024-01-13)
+
+### Bug Fixes
+
+-   generate alter table sql ([ad6de24](https://github.com/x-wink/wink-dao/commit/ad6de24d4c330b15c1e3e80aa2cda88e805cb807))
+-   orm curd result ([4d33285](https://github.com/x-wink/wink-dao/commit/4d33285321407880b1a442a77211caddf9c6d22d))
+-   select where exclude ignore fields ([14cbe7c](https://github.com/x-wink/wink-dao/commit/14cbe7c6ce7950272c456e6620475371b1bdd9bd))
+-   types ([a6b4851](https://github.com/x-wink/wink-dao/commit/a6b48519725c4c434912ca36a2ffe685226c3dd9))
+
 ## [0.0.2-beta.4](https://github.com/x-wink/wink-dao/compare/v0.0.2-beta.3...v0.0.2-beta.4) (2023-12-27)
 
 ### Bug Fixes

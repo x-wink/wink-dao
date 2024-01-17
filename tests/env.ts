@@ -1,4 +1,4 @@
-import { useDao } from '../src';
+import { AutoTablePolicies, useDao, useOrm } from '../src';
 import dotenv from 'dotenv';
 dotenv.config({
     path: '.env.local',
@@ -21,6 +21,8 @@ export const dao = useDao({
         removedValue: 1,
     },
 });
+
+export const orm = useOrm(dao, { autoTablePolicy: AutoTablePolicies.MANUAL, normalrizeName: true });
 export interface TestEntity {
     id: number;
     name: string;

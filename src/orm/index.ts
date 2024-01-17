@@ -99,13 +99,13 @@ export const useOrm = (dao: WinkDao, options?: OrmOptions) => {
             return (await dao.update<T>(resolveUpdateOptions({ data, ...options }))) === 1;
         };
         const remove = async (ids: number[], field = 'id') => {
-            return (await dao.remove(resolveUpdateOptions({ where: { [field]: ids } }))) === 1;
+            return (await dao.remove(resolveUpdateOptions({ where: { [field]: ids } }))) === ids.length;
         };
         const revoke = async (ids: number[], field = 'id') => {
-            return (await dao.revoke(resolveUpdateOptions({ where: { [field]: ids } }))) === 1;
+            return (await dao.revoke(resolveUpdateOptions({ where: { [field]: ids } }))) === ids.length;
         };
         const deletion = async (ids: number[], field = 'id') => {
-            return (await dao.deletion(resolveDeletionOptions({ where: { [field]: ids } }))) === 1;
+            return (await dao.deletion(resolveDeletionOptions({ where: { [field]: ids } }))) === ids.length;
         };
         const exec = async <T = ExecResult>(sql: string, values?: unknown[]) => {
             return dao.exec<T>(sql, values);
