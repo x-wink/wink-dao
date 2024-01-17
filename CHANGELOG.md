@@ -1,3 +1,5 @@
+## [0.0.3-beta.0](https://github.com/x-wink/wink-dao/compare/v0.0.2...v0.0.3-beta.0) (2024-01-17)
+
 ## [0.0.2](https://github.com/x-wink/wink-dao/compare/v0.0.2-beta.3...v0.0.2) (2024-01-13)
 
 ### Bug Fixes
