@@ -1,3 +1,9 @@
+## [0.0.3-beta.2](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.1...v0.0.3-beta.2) (2024-01-30)
+
+### Features
+
+-   cache query all table results ([697021c](https://github.com/x-wink/wink-dao/commit/697021c0f659d04f1ba8491277346a82f983d91c))
+
 ## [0.0.3-beta.1](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.0...v0.0.3-beta.1) (2024-01-17)
 
 ### Bug Fixes
