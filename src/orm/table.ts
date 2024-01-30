@@ -26,19 +26,30 @@ import {
  */
 export const useAutoTable = (database: string, dao: WinkDao, normalrizeName: boolean) => {
     const { logger } = dao;
+    const tableCache = [] as string[];
+    let queryTableTask: ReturnType<typeof allTable> | undefined;
     /**
      * 获取数据库中所有表名
      */
-    const allTable = async () => {
-        const res = await dao.exec<Record<string, string>[]>(findAllTablesSql);
-        return res.map((item) => Object.values(item)[0]);
+    const allTable = async (): Promise<string[]> => {
+        const res = [];
+        if (tableCache.length) {
+            res.push(...tableCache);
+        } else {
+            if (!queryTableTask) {
+                queryTableTask = dao
+                    .exec<Record<string, string>[]>(findAllTablesSql)
+                    .then((res) => res.map((item) => Object.values(item)[0]));
+            }
+            res.push(...(await queryTableTask));
+        }
+        return res;
     };
     /**
      * 判断表名是否存在
      */
     const hasTable = async (tableName: string) => {
-        const all = await allTable();
-        return all.includes(tableName);
+        return (await allTable()).includes(tableName);
     };
     /**
      * 获取数据表定义SQL
