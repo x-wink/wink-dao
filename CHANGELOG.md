@@ -1,3 +1,9 @@
+## [0.0.3-beta.4](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.3...v0.0.3-beta.4) (2024-03-11)
+
+### Features
+
+-   dao add logResult optional option config ([a3229b5](https://github.com/x-wink/wink-dao/commit/a3229b5f9299151023a34ee9489caaf944deeb36))
+
 ## [0.0.3-beta.3](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.2...v0.0.3-beta.3) (2024-02-20)
 
 ## [0.0.3-beta.2](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.1...v0.0.3-beta.2) (2024-01-30)
