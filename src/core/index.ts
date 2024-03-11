@@ -31,6 +31,7 @@ export const useDao = (options: DaoOptions) => {
     const {
         logger = console,
         debug = false,
+        logResult = false,
         initSql,
         removeOptions = { controlField: 'delFlag', normalValue: 0, removedValue: 1 },
         hooks,
@@ -144,7 +145,7 @@ export const useDao = (options: DaoOptions) => {
         try {
             const [rows, fields] = await connection.query(sql, values);
             const res = afterExec<T>(rows, fields);
-            debug && logger.debug(rows, fields, '\n');
+            logResult && logger.debug(rows, fields, '\n');
             return res;
         } catch (e) {
             const err = e as QueryError;

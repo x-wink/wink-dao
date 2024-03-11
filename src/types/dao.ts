@@ -37,6 +37,7 @@ export interface DaoOptions {
     config: MysqlConfig;
     logger?: DaoLogger;
     debug?: boolean;
+    logResult?: boolean;
     initSql?: string[];
     removeOptions?: LogicDeletionOptions;
     hooks?: DaoHooks;
