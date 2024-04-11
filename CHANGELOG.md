@@ -1,3 +1,9 @@
+## [0.0.3-beta.5](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.4...v0.0.3-beta.5) (2024-04-11)
+
+### Bug Fixes
+
+-   between condition sql syntax error ([d2150f9](https://github.com/x-wink/wink-dao/commit/d2150f97af8fdc7354adeb64015a02bad7824eb5))
+
 ## [0.0.3-beta.4](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.3...v0.0.3-beta.4) (2024-03-11)
 
 ### Features
