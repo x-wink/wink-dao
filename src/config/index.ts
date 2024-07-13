@@ -23,13 +23,13 @@ export const getDefaultLength = (type: ColumnType) => {
             length = [8];
             break;
         case ColumnType.FLOAT:
-            length = [4, 4];
+            length = [];
             break;
         case ColumnType.DOUBLE:
-            length = [8, 8];
+            length = [];
             break;
         case ColumnType.DECIMAL:
-            length = [10, 2];
+            length = [];
             break;
         case ColumnType.BOOLEAN:
             length = [1];

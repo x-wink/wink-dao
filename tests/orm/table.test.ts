@@ -20,8 +20,8 @@ describe('AutoTable', () => {
             \`update_time\` datetime DEFAULT NULL COMMENT '修改时间',
             \`remove_time\` datetime DEFAULT NULL COMMENT '移除时间',
             \`user_id\` int(11) NOT NULL,
-            \`longitude\` double(8,8) NOT NULL,
-            \`latitude\` double(8,8) NOT NULL,
+            \`longitude\` double NOT NULL,
+            \`latitude\` double NOT NULL,
             \`location\` varchar(255) NOT NULL,
             \`type\` int(11) NOT NULL,
             PRIMARY KEY (\`id\`)
