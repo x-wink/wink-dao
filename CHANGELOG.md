@@ -1,3 +1,10 @@
+## [0.0.3-beta.7](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.5...v0.0.3-beta.7) (2024-07-13)
+
+### Bug Fixes
+
+-   修复小数字段类型的默认长度，避免未设置长度导致小数部分丢失 ([3e9aa3e](https://github.com/x-wink/wink-dao/commit/3e9aa3e0c024f94cc4e8f11297dee3242edc4436))
+-   float value default length ([925d480](https://github.com/x-wink/wink-dao/commit/925d48057077c7f24cf0ef83b377136fe280e7b0))
+
 ## [0.0.3-beta.6](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.5...v0.0.3-beta.6) (2024-05-15)
 
 ### Bug Fixes
