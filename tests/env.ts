@@ -1,16 +1,10 @@
-import { AutoTablePolicies, useDao, useOrm } from '../src';
 import dotenv from 'dotenv';
-dotenv.config({
+import type { MysqlConfig } from '../src';
+import { AutoTablePolicies, useDao, useOrm } from '../src';
+const { parsed } = dotenv.config({
     path: '.env.local',
 });
-export const config = {
-    host: process.env.host,
-    port: +process.env.port!,
-    user: process.env.user,
-    password: process.env.password,
-    database: process.env.database,
-    supportBigNumbers: true,
-};
+export const config = parsed as MysqlConfig;
 // TODO add hooks
 export const dao = useDao({
     config,
