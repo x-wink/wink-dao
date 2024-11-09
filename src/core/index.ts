@@ -1,30 +1,31 @@
-import type { QueryError, PoolConnection, RowDataPacket } from 'mysql2/promise';
-export type { Pool } from 'mysql2/promise';
-import type {
-    DaoOptions,
-    ExecResult,
-    InsertOptions,
-    SelectOptions,
-    UpdateOptions,
-    DeletionOptions,
-    ExecResultConvertor,
-    SelectResultConvertor,
-    RemoveOptions,
-    RevokeOptions,
-} from '../types';
-import { createPool, Types } from 'mysql2/promise';
-import { WhereBuilder, QueryBuilder, InsertBuilder, UpdateBuilder } from '@xwink/sql-builder';
+import { InsertBuilder, QueryBuilder, UpdateBuilder, WhereBuilder } from '@xwink/sql-builder';
 import { camel2Underline, convertUnderline2camel } from '@xwink/utils';
+import type { PoolConnection, QueryError, RowDataPacket } from 'mysql2/promise';
+import { createPool, Types } from 'mysql2/promise';
 import {
     ConnectFaildError,
+    NoDataError,
+    NoSuchTableError,
     REG_DATE_STRING,
     REG_TABLE_NAME_IN_ERROR,
-    NoSuchTableError,
     SqlSyntaxError,
+    TimeoutError,
     UnhandleError,
-    NoDataError,
 } from '../defs';
+import type {
+    DaoOptions,
+    DeletionOptions,
+    ExecResult,
+    ExecResultConvertor,
+    InsertOptions,
+    RemoveOptions,
+    RevokeOptions,
+    SelectOptions,
+    SelectResultConvertor,
+    UpdateOptions,
+} from '../types';
 import { parseConfig } from '../utils';
+export type { Pool } from 'mysql2/promise';
 
 export const useDao = (options: DaoOptions) => {
     // TODO 优化配置解析
@@ -116,6 +117,7 @@ export const useDao = (options: DaoOptions) => {
      */
     const commit = () => {
         connection?.commit();
+        connection?.release();
         logger.debug('提交事务', !!connection);
     };
     /**
@@ -123,6 +125,7 @@ export const useDao = (options: DaoOptions) => {
      */
     const rollback = () => {
         connection?.rollback();
+        connection?.release();
         logger.debug('回滚事务', !!connection);
     };
     /**
@@ -133,7 +136,7 @@ export const useDao = (options: DaoOptions) => {
      * @example exec('select * from user where id = ?', [1]);
      * @throws DaoError
      */
-    const exec = async <T = ExecResult>(sql: string, values: unknown[] = []): Promise<T> => {
+    const exec = async <T = ExecResult>(sql: string, values: unknown[] = [], retry = 0): Promise<T> => {
         const hasConnection = !!connection;
         await getConnection();
         if (!connection) {
@@ -154,6 +157,12 @@ export const useDao = (options: DaoOptions) => {
                 throw new NoSuchTableError(tableName, err);
             } else if (['ER_PARSE_ERROR'].includes(err.code)) {
                 throw new SqlSyntaxError({ sql, values }, err);
+            } else if (['ETIMEOUT'].includes(err.code)) {
+                if (retry < 3) {
+                    debug && logger.debug(`连接超时，正在重试第${retry + 1}次`);
+                    return exec(sql, values, retry + 1);
+                }
+                throw new TimeoutError(err);
             } else if (err.message.includes('connection is in closed state')) {
                 debug && logger.debug('当前连接已关闭，重新获取连接');
                 connection = void 0;

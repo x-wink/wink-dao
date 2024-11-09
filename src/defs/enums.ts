@@ -15,13 +15,17 @@ export enum DaoErrorType {
      */
     CONNECT_FAILD = 200,
     /**
+     * 数据库连接超时
+     */
+    CONNECT_TIMEOUT = 201,
+    /**
      * SQL语法错误
      */
-    SQL_SYNTAX_ERROR = 201,
+    SQL_SYNTAX_ERROR = 202,
     /**
      * 数据表不存在
      */
-    NO_SUCH_TABLE = 202,
+    NO_SUCH_TABLE = 203,
     /**
      * 数据为空
      */
@@ -48,6 +52,10 @@ export enum DaoErrorInfo {
      * 数据库连接失败
      */
     CONNECT_FAILD = '数据库连接失败',
+    /**
+     * 数据库连接超时
+     */
+    CONNECT_TIMEOUT = '数据库连接超时',
     /**
      * SQL语法错误
      */

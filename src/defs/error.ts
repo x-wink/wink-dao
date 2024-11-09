@@ -1,6 +1,6 @@
 import type { PoolOptions } from 'mysql2';
-import { DaoErrorInfo, DaoErrorType } from './enums';
 import type { ExecInfo } from '../types';
+import { DaoErrorInfo, DaoErrorType } from './enums';
 
 /**
  * Dao错误
@@ -43,6 +43,15 @@ export class InvalidTypeError extends DaoError<string> {
 export class ConnectFaildError extends DaoError<string> {
     constructor(cuase?: unknown) {
         super(DaoErrorType.CONNECT_FAILD, DaoErrorInfo.CONNECT_FAILD, void 0, cuase);
+    }
+}
+
+/**
+ * 数据库连接超时错误
+ */
+export class TimeoutError extends DaoError<string> {
+    constructor(cuase?: unknown) {
+        super(DaoErrorType.CONNECT_TIMEOUT, DaoErrorInfo.CONNECT_TIMEOUT, void 0, cuase);
     }
 }
 
