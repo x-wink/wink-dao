@@ -93,6 +93,7 @@ export const useDao = (options: DaoOptions) => {
     const config = parseConfig(options.config);
     const pool = createPool(config);
     let connection: PoolConnection | undefined;
+    let transaction: boolean;
 
     /**
      * 获取连接
@@ -100,43 +101,49 @@ export const useDao = (options: DaoOptions) => {
     const getConnection = async () => {
         try {
             connection ??= await pool.getConnection();
+            // debug && logger.debug('获取连接', connection?.threadId);
         } catch (e) {
             throw new ConnectFaildError(e);
         }
+    };
+    /**
+     * 释放连接
+     */
+    const releaseConnection = () => {
+        connection?.release();
+        // debug && logger.debug('释放连接', connection?.threadId);
+        connection = void 0;
+        transaction = false;
     };
     /**
      * 开启事务
      */
     const beginTransaction = async () => {
         await getConnection();
-        connection!.beginTransaction();
-        logger.debug('开启事务');
+        await connection!.beginTransaction();
+        transaction = true;
+        // debug && logger.debug('开启事务', connection!.threadId);
     };
     /**
      * 提交事务
      */
-    const commit = () => {
-        connection?.commit();
-        connection?.release();
-        logger.debug('提交事务', !!connection);
+    const commit = async () => {
+        await connection?.commit();
+        // debug && logger.debug('提交事务', connection?.threadId);
+        releaseConnection();
     };
     /**
      * 回滚事务
      */
-    const rollback = () => {
-        connection?.rollback();
-        connection?.release();
-        logger.debug('回滚事务', !!connection);
+    const rollback = async () => {
+        await connection?.rollback();
+        // debug && logger.debug('回滚事务', connection?.threadId);
+        releaseConnection();
     };
     /**
-     * 执行SQL语句
-     * @param sql sql语句，变量请使用 ? 占位符，防止sql注入
-     * @param values 变量值集合，用于替换占位符
-     * @returns 执行结果
-     * @example exec('select * from user where id = ?', [1]);
-     * @throws DaoError
+     * 执行SQL语句内部函数
      */
-    const exec = async <T = ExecResult>(sql: string, values: unknown[] = [], retry = 0): Promise<T> => {
+    const _exec = async <T = ExecResult>(sql: string, values: unknown[] = [], retry = 0): Promise<T> => {
         const hasConnection = !!connection;
         await getConnection();
         if (!connection) {
@@ -158,22 +165,35 @@ export const useDao = (options: DaoOptions) => {
             } else if (['ER_PARSE_ERROR'].includes(err.code)) {
                 throw new SqlSyntaxError({ sql, values }, err);
             } else if (['ETIMEDOUT'].includes(err.code)) {
-                if (retry < 3) {
+                if (!transaction && retry < 3) {
                     debug && logger.debug(`连接超时，正在重试第${retry + 1}次`);
-                    return exec(sql, values, retry + 1);
+                    releaseConnection();
+                    return _exec(sql, values, retry + 1);
                 }
                 throw new TimeoutError(err);
             } else if (err.message.includes('connection is in closed state')) {
+                if (transaction) {
+                    throw new ConnectFaildError('连接已关闭');
+                }
                 debug && logger.debug('当前连接已关闭，重新获取连接');
-                connection = void 0;
-                return exec(sql, values);
+                releaseConnection();
+                return _exec(sql, values, retry + 1);
             } else {
                 throw new UnhandleError({ sql, values }, err);
             }
         } finally {
-            !hasConnection && connection?.release();
+            !hasConnection && releaseConnection();
         }
     };
+    /**
+     * 执行SQL语句
+     * @param sql sql语句，变量请使用 ? 占位符，防止sql注入
+     * @param values 变量值集合，用于替换占位符
+     * @returns 执行结果
+     * @example exec('select * from user where id = ?', [1]);
+     * @throws DaoError
+     */
+    const exec = <T = ExecResult>(sql: string, values: unknown[] = []): Promise<T> => _exec(sql, values);
 
     /**
      * 初始化操作
