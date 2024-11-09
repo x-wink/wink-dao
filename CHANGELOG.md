@@ -1,3 +1,12 @@
+## [0.0.3-beta.9](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.8...v0.0.3-beta.9) (2024-11-09)
+
+
+### Bug Fixes
+
+* typo error ([f6b2e14](https://github.com/x-wink/wink-dao/commit/f6b2e147ed54e3d6727fc91c891f9c9ca36e9e93))
+
+
+
 ## [0.0.3-beta.8](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.7...v0.0.3-beta.8) (2024-11-09)
 
 
