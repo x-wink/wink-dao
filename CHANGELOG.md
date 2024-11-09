@@ -1,3 +1,12 @@
+## [0.0.3-beta.10](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.9...v0.0.3-beta.10) (2024-11-09)
+
+
+### Performance Improvements
+
+* transaction logic ([ea2c7dc](https://github.com/x-wink/wink-dao/commit/ea2c7dca267c061fad0fe1902bf115d4888668cf))
+
+
+
 ## [0.0.3-beta.9](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.8...v0.0.3-beta.9) (2024-11-09)
 
 
