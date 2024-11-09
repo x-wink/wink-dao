@@ -157,7 +157,7 @@ export const useDao = (options: DaoOptions) => {
                 throw new NoSuchTableError(tableName, err);
             } else if (['ER_PARSE_ERROR'].includes(err.code)) {
                 throw new SqlSyntaxError({ sql, values }, err);
-            } else if (['ETIMEOUT'].includes(err.code)) {
+            } else if (['ETIMEDOUT'].includes(err.code)) {
                 if (retry < 3) {
                     debug && logger.debug(`连接超时，正在重试第${retry + 1}次`);
                     return exec(sql, values, retry + 1);
