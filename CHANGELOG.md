@@ -1,3 +1,17 @@
+## [0.0.3-beta.8](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.7...v0.0.3-beta.8) (2024-11-09)
+
+
+### Features
+
+* handle timeout ([24cd695](https://github.com/x-wink/wink-dao/commit/24cd6956ab3d99ab35fd6cf8d9ea8986452fca63))
+
+
+### Performance Improvements
+
+* test load env ([e3536e0](https://github.com/x-wink/wink-dao/commit/e3536e075531a1c767d2da0324ce6d64338dfd78))
+
+
+
 ## [0.0.3-beta.7](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.5...v0.0.3-beta.7) (2024-07-13)
 
 ### Bug Fixes
