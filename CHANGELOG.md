@@ -1,3 +1,12 @@
+## [0.0.3-beta.11](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.10...v0.0.3-beta.11) (2024-11-23)
+
+
+### Bug Fixes
+
+* ignore undefined values ([0e20b48](https://github.com/x-wink/wink-dao/commit/0e20b48850eac40ba5bea784edc4716d0b5e776d))
+
+
+
 ## [0.0.3-beta.10](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.9...v0.0.3-beta.10) (2024-11-09)
 
 
