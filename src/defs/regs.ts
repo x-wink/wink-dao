@@ -41,7 +41,7 @@ export const REG_TABLE_DEFINE_UK = /^\s*UNIQUE KEY `(.+?)` \(`(.+?)`\),?$/;
  * 匹配数据表定义SQL中的主键键约束多个字段名
  * @example `id`,`code`
  */
-export const REG_TABLE_DEFINE_PKS = /^\s*PRIMARY KEY \((.+?)\),?$/;
+export const REG_TABLE_DEFINE_PKS = /^\s*PRIMARY KEY \((.+?)\)( USING BTREE)?,?$/;
 /**
  * 匹配数据表定义SQL中的主键键约束字段名集合
  */

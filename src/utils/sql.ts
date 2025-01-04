@@ -1,7 +1,7 @@
-import type { ColumnDefine, TableDefine } from '../types';
 import { concat, useAutoIncrementId } from '@xwink/utils';
 import compare from 'just-compare';
 import { ColumnType } from '../defs';
+import type { ColumnDefine, TableDefine } from '../types';
 /**
  * 获取使用反引号包裹的名称，防止名称为数据库保留关键字
  * @example secureName('name') === '`name`'
@@ -27,7 +27,7 @@ export const genColumnDefineSql = (columnDefine: ColumnDefine) => {
     const isStr = [ColumnType.STRING, ColumnType.TEXT, ColumnType.JSON].includes(type);
     return `${secureName(name)} ${type}${(length as number[]).length ? `(${(length as number[]).join(',')})` : ''}${
         autoIncrement ? ' unsigned' : ''
-    }${required ? ' not null' : ''}${
+    }${required ? ' not null' : ' null'}${
         typeof defaultValue === 'undefined' ? '' : ` default ${isStr ? JSON.stringify(defaultValue) : defaultValue}`
     }${autoIncrement ? ' auto_increment' : ''}${comment ? ` comment ${JSON.stringify(comment)}` : ''}`;
 };
@@ -77,15 +77,19 @@ export const genTableDefineSql = (database: string, tableDefine: TableDefine) =>
  * @param newDefine 新数据表配置
  */
 export const genTableAlterSql = (database: string, oldDefine: TableDefine, newDefine: TableDefine) => {
-    const cols = concat(
-        newDefine.columnDefines.map((item) => {
-            const old = oldDefine.columnDefines.find((col) => col.name === item.name);
-            const isSame =
-                old && compare({ ...old, unique: false, primary: false }, { ...item, unique: false, primary: false });
-            return isSame ? '' : concat([old ? 'modify column' : 'add column', genColumnDefineSql(item)]);
-        }),
-        ',\n'
-    );
+    const modifies = newDefine.columnDefines.map((item) => {
+        const old = oldDefine.columnDefines.find((col) => col.name === item.name);
+        const isSame =
+            old && compare({ ...old, unique: false, primary: false }, { ...item, unique: false, primary: false });
+        return isSame ? '' : concat([old ? 'modify column' : 'add column', genColumnDefineSql(item)]);
+    });
+    const deletes = oldDefine.columnDefines.map((item) => {
+        const news = newDefine.columnDefines.find((col) => col.name === item.name);
+        return !!news || !item.required
+            ? ''
+            : concat(['modify column', genColumnDefineSql({ ...item, required: false })]);
+    });
+    const cols = concat([...modifies, ...deletes], ',\n');
     const hasOldPk = oldDefine.columnDefines.filter((item) => item.primary).length;
     const hasNewPk = newDefine.columnDefines.filter((item) => item.primary).length;
 

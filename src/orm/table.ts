@@ -1,5 +1,4 @@
-import type { ColumnDefine, TableDefine, WinkDao } from '../types';
-import { unique, camel2Underline } from '@xwink/utils';
+import { camel2Underline, unique } from '@xwink/utils';
 import compare from 'just-compare';
 import { getDefaultLength } from '../config';
 import {
@@ -12,6 +11,7 @@ import {
     REG_TABLE_DEFINE_PK_NAME,
     REG_TABLE_DEFINE_UK,
 } from '../defs';
+import type { ColumnDefine, TableDefine, WinkDao } from '../types';
 import {
     findAllTablesSql,
     genTableAlterSql,
@@ -114,7 +114,7 @@ export const useAutoTable = (database: string, dao: WinkDao, normalrizeName: boo
         const {
             type,
             autoIncrement = false,
-            required = !!defaultValue,
+            required = false,
             primary = false,
             unique = false,
             comment,
@@ -133,7 +133,7 @@ export const useAutoTable = (database: string, dao: WinkDao, normalrizeName: boo
             length = [];
         }
         // 统一默认值
-        if (defaultValue === 'NULL') {
+        if (defaultValue?.toUpperCase() === 'NULL') {
             defaultValue = void 0;
         }
         if (typeof defaultValue !== 'undefined') {
@@ -188,14 +188,29 @@ export const useAutoTable = (database: string, dao: WinkDao, normalrizeName: boo
     };
     /**
      * 判断是否需要更新数据表结构
-     * @param oldTableDefine 旧数据表结构
      * @param newTableDefine 新数据表结构
+     * @param oldTableDefine 旧数据表结构
      */
-    const needUpdate = (oldTableDefine: TableDefine, newTableDefine: TableDefine) => {
-        return newTableDefine.columnDefines.some((item) => {
-            const old = oldTableDefine.columnDefines.find((col) => col.name === item.name);
-            return !old || !compare(old, item);
-        });
+    const needUpdate = (newTableDefine: TableDefine, oldTableDefine: TableDefine) => {
+        const hasRemoved =
+            oldTableDefine.columnDefines.filter((old) => {
+                const news = newTableDefine.columnDefines.find((item) => item.name === old.name);
+                const res = !news && old.required;
+                if (res) {
+                    logger.info(`必填字段被删除：${newTableDefine.name}.${old.name}`);
+                }
+                return res;
+            }).length > 0;
+        const hasModified =
+            newTableDefine.columnDefines.filter((item) => {
+                const old = oldTableDefine.columnDefines.find((col) => col.name === item.name);
+                const res = !old || !compare(old, item);
+                if (res) {
+                    logger.info(`字段发生变化：${newTableDefine.name}.${item.name}`);
+                }
+                return res;
+            }).length > 0;
+        return hasRemoved || hasModified;
     };
     /**
      * 如果需要表结构发生变化，则根据配置更新数据表

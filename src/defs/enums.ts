@@ -155,10 +155,12 @@ export enum ColumnType {
      */
     BOOLEAN = 'tinyint',
     /**
+     * @deprecated 待解决时区问题，暂用datetime
      * 日期
      */
     DATE = 'date',
     /**
+     * @deprecated 待解决时区问题，暂用datetime
      * 时间
      */
     TIME = 'time',

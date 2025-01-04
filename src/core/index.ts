@@ -1,7 +1,7 @@
 import { InsertBuilder, QueryBuilder, UpdateBuilder, WhereBuilder } from '@xwink/sql-builder';
 import { camel2Underline, convertUnderline2camel } from '@xwink/utils';
 import type { PoolConnection, QueryError, RowDataPacket } from 'mysql2/promise';
-import { createPool, Types } from 'mysql2/promise';
+import { Types, createPool } from 'mysql2/promise';
 import {
     ConnectFaildError,
     NoDataError,
@@ -166,10 +166,11 @@ export const useDao = (options: DaoOptions) => {
                 throw new SqlSyntaxError({ sql, values }, err);
             } else if (['ETIMEDOUT'].includes(err.code)) {
                 if (!transaction && retry < 3) {
-                    debug && logger.debug(`连接超时，正在重试第${retry + 1}次`);
+                    debug && logger.debug(`数据库连接超时，重试${retry + 1}`);
                     releaseConnection();
                     return _exec(sql, values, retry + 1);
                 }
+                logger.error('数据库连接超时', err);
                 throw new TimeoutError(err);
             } else if (err.message.includes('connection is in closed state')) {
                 if (transaction) {
