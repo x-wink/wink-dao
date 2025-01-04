@@ -1,3 +1,12 @@
+## [0.0.3-beta.12](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.11...v0.0.3-beta.12) (2025-01-04)
+
+
+### Bug Fixes
+
+* usage bugs ([b8b6fd9](https://github.com/x-wink/wink-dao/commit/b8b6fd9308f55f9b24aa008d4d8118d9fc431ef5))
+
+
+
 ## [0.0.3-beta.11](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.10...v0.0.3-beta.11) (2024-11-23)
 
 

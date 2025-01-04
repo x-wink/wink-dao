@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { genTableAlterSql } from '../../src/utils/sql';
-import { useAutoTable } from '../../src/orm/table';
-import { dao } from '../env';
 import { ColumnType } from '../../src/defs';
+import { useAutoTable } from '../../src/orm/table';
+import { genTableAlterSql } from '../../src/utils/sql';
+import { dao } from '../env';
 
 describe('AutoTable', () => {
     const database = 'my_database';
@@ -331,6 +331,8 @@ add primary key (\`a\`)`);
         expect(genTableAlterSql(database, oldDefine, newDefine)).toEqual(`alter table \`my_database\`.\`my_table\`
 add column \`dd\` time(3) not null,
 add column \`ee\` date not null,
+modify column \`d\` varchar(255) null,
+modify column \`e\` int(11) null,
 drop primary key,
 add primary key (\`b\`)`);
     });
