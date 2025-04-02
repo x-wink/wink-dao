@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeAll, afterAll } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import type { TestEntity } from '../env';
 import { orm } from '../env';
 
@@ -108,6 +108,14 @@ describe('CURD', () => {
     });
     test('validate remove', async () => {
         const res = await repository.detail(data.id!);
+        expect(res).toBeUndefined();
+    });
+    test('batch remove', async () => {
+        const success = await repository.remove(Array.from({ length: total - 1 }, (_, index) => index + 2));
+        expect(success).equals(true);
+    });
+    test('validate batch remove', async () => {
+        const res = await repository.detail(total);
         expect(res).toBeUndefined();
     });
     test('revoke', async () => {
