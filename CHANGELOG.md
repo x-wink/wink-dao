@@ -1,3 +1,7 @@
+## [0.0.4](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.12...v0.0.4) (2025-04-02)
+
+
+
 ## [0.0.3-beta.12](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.11...v0.0.3-beta.12) (2025-01-04)
 
 
