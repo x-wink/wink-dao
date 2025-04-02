@@ -47,7 +47,7 @@
         "mysql2": "^3.11.4"
     },
     "dependencies": {
-        "@xwink/sql-builder": "^1.0.5",
+        "@xwink/sql-builder": "^1.0.6",
         "just-compare": "^2.3.0"
     },
     "devDependencies": {
