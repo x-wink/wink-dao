@@ -13,7 +13,7 @@
         "url": "https://github.com/x-wink"
     },
     "repository": {
-        "url": "https://github.com/x-wink/wink-dao"
+        "url": "git+https://github.com/x-wink/wink-dao.git"
     },
     "private": false,
     "files": [
