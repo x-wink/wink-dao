@@ -144,7 +144,6 @@ export const useDao = (options: DaoOptions) => {
      * 执行SQL语句内部函数
      */
     const _exec = async <T = ExecResult>(sql: string, values: unknown[] = [], retry = 0): Promise<T> => {
-        const hasConnection = !!connection;
         await getConnection();
         if (!connection) {
             throw new UnhandleError();
@@ -183,7 +182,8 @@ export const useDao = (options: DaoOptions) => {
                 throw new UnhandleError({ sql, values }, err);
             }
         } finally {
-            !hasConnection && releaseConnection();
+            // 关键修复：只有非事务状态下才释放连接，事务中的连接由 commit/rollback 释放
+            !transaction && releaseConnection();
         }
     };
     /**
