@@ -1,3 +1,12 @@
+## [0.0.5](https://github.com/x-wink/wink-dao/compare/v0.0.4...v0.0.5) (2025-12-16)
+
+
+### Bug Fixes
+
+* connect pool ([2c0a673](https://github.com/x-wink/wink-dao/commit/2c0a67363ec0db40ad4cb5f6304f4b37c109eaf5))
+
+
+
 ## [0.0.4](https://github.com/x-wink/wink-dao/compare/v0.0.3-beta.12...v0.0.4) (2025-04-02)
 
 
