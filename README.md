@@ -318,23 +318,23 @@ const entities = await repository.exec<TestEntity[]>(`select * from ${table} whe
 
 ## 📄 待办列表
 
--   [ ] 【feat-relaction】处理关联关系
--   [ ] 【refactor-adapter】支持适配多种数据库
--   [ ] 【feat-docs】新增`vitepress`文档项目并完善文档
--   [ ] 【chore】寻找伙（da）伴（lao）一起合作
+- [ ] 【feat-relaction】处理关联关系
+- [ ] 【refactor-adapter】支持适配多种数据库
+- [ ] 【feat-docs】新增`vitepress`文档项目并完善文档
+- [ ] 【chore】寻找伙（da）伴（lao）一起合作
 
 ## 🆘问题求助
 
 ## 🎯 框架依赖
 
--   [mysql2](https://www.npmjs.com/package/mysql2) MySQL 数据库协议
+- [mysql2](https://www.npmjs.com/package/mysql2) MySQL 数据库协议
 
 ## 👤 作者
 
 **向文可**
 
--   Email: 1041367524@qq.com
--   Github: [@x-wink](https://github.com/x-wink)
+- Email: 1041367524@qq.com
+- Github: [@x-wink](https://github.com/x-wink)
 
 ## 🤝 贡献
 
