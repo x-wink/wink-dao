@@ -92,59 +92,106 @@ export const useDao = (options: DaoOptions) => {
     } = hooks ?? {};
     const config = parseConfig(options.config);
     const pool = createPool(config);
-    let connection: PoolConnection | undefined;
-    let transaction: boolean;
+
+    // 事务连接和状态，仅在事务模式下使用
+    let transactionConnection: PoolConnection | undefined;
+    let inTransaction = false;
 
     /**
-     * 获取连接
+     * 获取数据库连接
+     * - 事务模式：复用事务连接
+     * - 非事务模式：从连接池获取新连接
      */
     const getConnection = async () => {
         try {
-            connection ??= await pool.getConnection();
-            // debug && logger.debug('获取连接', connection?.threadId);
+            if (inTransaction && transactionConnection) {
+                return transactionConnection;
+            }
+            // 非事务模式：每次返回新连接（从池中获取）
+            const conn = await pool.getConnection();
+            // debug && logger.debug('获取连接', conn.threadId);
+            return conn;
         } catch (e) {
             throw new ConnectFaildError(e);
         }
     };
+
     /**
-     * 释放连接
+     * 释放连接，事务模式下不释放，由 commit/rollback 处理
      */
-    const releaseConnection = () => {
-        connection?.release();
-        // debug && logger.debug('释放连接', connection?.threadId);
-        connection = void 0;
-        transaction = false;
+    const releaseConnection = (conn: PoolConnection) => {
+        if (!inTransaction) {
+            conn?.release();
+            // debug && logger.debug('释放连接', conn.threadId);
+        }
     };
+
     /**
      * 开启事务
+     * @throws Error 不能重复开启事务
      */
     const beginTransaction = async () => {
-        await getConnection();
-        await connection!.beginTransaction();
-        transaction = true;
-        // debug && logger.debug('开启事务', connection!.threadId);
+        if (inTransaction) {
+            throw new Error('不能重复开启事务');
+        }
+        try {
+            transactionConnection = await pool.getConnection();
+            await transactionConnection.beginTransaction();
+            inTransaction = true;
+            // debug && logger.debug('开启事务', transactionConnection.threadId);
+        } catch (e) {
+            transactionConnection?.release();
+            transactionConnection = void 0;
+            throw e;
+        }
     };
+
     /**
-     * 提交事务
+     * 提交事务并释放连接
+     * @throws Error 还没开启事务
      */
     const commit = async () => {
-        await connection?.commit();
-        // debug && logger.debug('提交事务', connection?.threadId);
-        releaseConnection();
+        try {
+            if (!transactionConnection) {
+                throw new Error('还没开启事务');
+            }
+            await transactionConnection.commit();
+            // debug && logger.debug('提交事务', transactionConnection.threadId);
+        } finally {
+            transactionConnection?.release();
+            // debug && logger.debug('释放事务连接', transactionConnection?.threadId);
+            transactionConnection = void 0;
+            inTransaction = false;
+        }
     };
+
     /**
-     * 回滚事务
+     * 回滚事务并释放连接
+     * @throws Error 还没开启事务
      */
     const rollback = async () => {
-        await connection?.rollback();
-        // debug && logger.debug('回滚事务', connection?.threadId);
-        releaseConnection();
+        try {
+            if (!transactionConnection) {
+                throw new Error('还没开启事务');
+            }
+            await transactionConnection.rollback();
+            // debug && logger.debug('回滚事务', transactionConnection.threadId);
+        } finally {
+            transactionConnection?.release();
+            // debug && logger.debug('释放事务连接', transactionConnection?.threadId);
+            transactionConnection = void 0;
+            inTransaction = false;
+        }
     };
+
     /**
      * 执行SQL语句内部函数
+     * @param sql SQL语句
+     * @param values 参数值
+     * @param retry 当前重试次数
      */
     const _exec = async <T = ExecResult>(sql: string, values: unknown[] = [], retry = 0): Promise<T> => {
-        await getConnection();
+        const connection = await getConnection();
         if (!connection) {
             throw new UnhandleError();
         }
@@ -164,26 +211,37 @@ export const useDao = (options: DaoOptions) => {
             } else if (['ER_PARSE_ERROR'].includes(err.code)) {
                 throw new SqlSyntaxError({ sql, values }, err);
             } else if (['ETIMEDOUT'].includes(err.code)) {
-                if (!transaction && retry < 3) {
+                // 事务中不允许重试，防止状态被破坏
+                if (inTransaction) {
+                    throw new TimeoutError('事务中发生超时，不允许重试');
+                }
+                if (retry < 3) {
                     debug && logger.debug(`数据库连接超时，重试${retry + 1}`);
-                    releaseConnection();
+                    releaseConnection(connection);
                     return _exec(sql, values, retry + 1);
                 }
                 logger.error('数据库连接超时', err);
                 throw new TimeoutError(err);
             } else if (err.message.includes('connection is in closed state')) {
-                if (transaction) {
-                    throw new ConnectFaildError('连接已关闭');
+                // 事务中连接关闭应抛出错误
+                if (inTransaction) {
+                    throw new ConnectFaildError('事务连接已关闭');
+                }
+                // 添加重试次数限制
+                if (retry >= 3) {
+                    throw new ConnectFaildError('连接重试次数超限');
                 }
                 debug && logger.debug('当前连接已关闭，重新获取连接');
-                releaseConnection();
+                releaseConnection(connection);
                 return _exec(sql, values, retry + 1);
             } else {
                 throw new UnhandleError({ sql, values }, err);
             }
         } finally {
-            // 关键修复：只有非事务状态下才释放连接，事务中的连接由 commit/rollback 释放
-            !transaction && releaseConnection();
+            // 只有非事务状态下才释放连接，事务中的连接由 commit/rollback 释放
+            if (!inTransaction) {
+                releaseConnection(connection);
+            }
         }
     };
     /**
@@ -388,6 +446,23 @@ export const useDao = (options: DaoOptions) => {
         return (await exec(`delete from ${table} ${condition.toSql()}`, condition.getValues())).affectedRows;
     };
 
+    /**
+     * 关闭连接池
+     */
+    const close = async () => {
+        if (transactionConnection) {
+            if (inTransaction) {
+                logger.warn('关闭连接池时存在未完成的事务，自动回滚');
+                await rollback();
+            } else {
+                transactionConnection.release();
+                transactionConnection = void 0;
+            }
+        }
+        await pool.end();
+        debug && logger.debug('连接池已关闭');
+    };
+
     return {
         config,
         logger,
@@ -407,6 +482,7 @@ export const useDao = (options: DaoOptions) => {
         beginTransaction,
         commit,
         rollback,
+        close,
         buildSelect,
     };
 };
