@@ -1,5 +1,6 @@
 import { InsertBuilder, QueryBuilder, UpdateBuilder, WhereBuilder } from '@xwink/sql-builder';
 import { camel2Underline, convertUnderline2camel } from '@xwink/utils';
+import { AsyncLocalStorage } from 'async_hooks';
 import type { PoolConnection, QueryError, RowDataPacket } from 'mysql2/promise';
 import { Types, createPool } from 'mysql2/promise';
 import {
@@ -26,6 +27,18 @@ import type {
 } from '../types';
 import { parseConfig } from '../utils';
 export type { Pool } from 'mysql2/promise';
+
+/**
+ * 事务上下文
+ */
+interface TransactionContext {
+    connection: PoolConnection;
+}
+
+/**
+ * AsyncLocalStorage 实例，用于在异步调用链中存储事务上下文
+ */
+const asyncLocalStorage = new AsyncLocalStorage<TransactionContext>();
 
 export const useDao = (options: DaoOptions) => {
     // TODO 优化配置解析
@@ -93,22 +106,14 @@ export const useDao = (options: DaoOptions) => {
     const config = parseConfig(options.config);
     const pool = createPool(config);
 
-    // 事务连接和状态，仅在事务模式下使用
-    let transactionConnection: PoolConnection | undefined;
-    let inTransaction = false;
-
     /**
      * 获取数据库连接
-     * - 事务模式：复用事务连接
+     * - 事务模式：从 AsyncLocalStorage 获取事务连接
      * - 非事务模式：从连接池获取新连接
      */
     const getConnection = async () => {
         try {
-            if (inTransaction && transactionConnection) {
-                return transactionConnection;
-            }
-            // 非事务模式：每次返回新连接（从池中获取）
-            const conn = await pool.getConnection();
+            const conn = asyncLocalStorage.getStore()?.connection ?? (await pool.getConnection());
             // debug && logger.debug('获取连接', conn.threadId);
             return conn;
         } catch (e) {
@@ -117,71 +122,76 @@ export const useDao = (options: DaoOptions) => {
     };
 
     /**
-     * 释放连接，事务模式下不释放，由 commit/rollback 处理
+     * 释放连接，事务模式下不释放（由 transaction 方法管理）
      */
     const releaseConnection = (conn: PoolConnection) => {
-        if (!inTransaction) {
-            conn?.release();
-            // debug && logger.debug('释放连接', conn.threadId);
+        // 非事务连接才释放
+        !asyncLocalStorage.getStore() && conn?.release();
+        // debug && logger.debug('释放连接', conn.threadId);
+    };
+
+    /**
+     * 在事务中执行操作
+     * @param callback 事务回调函数
+     * @returns 回调函数的返回值
+     * @example
+     * await dao.transaction(async () => {
+     *   await dao.insert({ table: 'user', data: [{ name: 'test' }] });
+     *   await dao.update({ table: 'user', where: { id: 1 }, data: { name: 'updated' } });
+     * });
+     */
+    const transaction = async <T>(callback: () => Promise<T>): Promise<T> => {
+        const connection = await pool.getConnection();
+        const ctx: TransactionContext = { connection };
+
+        try {
+            await connection.beginTransaction();
+            // debug && logger.debug('开启事务', connection.threadId);
+
+            // 在异步上下文中存储事务连接，回调函数内的所有操作都会使用这个连接
+            const result = await asyncLocalStorage.run(ctx, async () => {
+                return await callback();
+            });
+
+            await connection.commit();
+            // debug && logger.debug('提交事务', connection.threadId);
+
+            return result;
+        } catch (error) {
+            await connection.rollback();
+            // debug && logger.debug('回滚事务', connection.threadId);
+            throw error;
+        } finally {
+            connection.release();
+            // debug && logger.debug('释放事务连接', connection.threadId);
         }
     };
 
     /**
-     * 开启事务
-     * @throws Error 不能重复开启事务
+     * 开启事务（手动管理，不推荐）
+     * @deprecated 建议使用 transaction() 方法自动管理事务
+     * @throws Error 此方法在 AsyncLocalStorage 模式下不支持
      */
     const beginTransaction = async () => {
-        if (inTransaction) {
-            throw new Error('不能重复开启事务');
-        }
-        try {
-            transactionConnection = await pool.getConnection();
-            await transactionConnection.beginTransaction();
-            inTransaction = true;
-            // debug && logger.debug('开启事务', transactionConnection.threadId);
-        } catch (e) {
-            transactionConnection?.release();
-            transactionConnection = void 0;
-            throw e;
-        }
+        throw new Error('使用 AsyncLocalStorage 模式时，请使用 transaction() 方法代替 beginTransaction()');
     };
 
     /**
-     * 提交事务并释放连接
-     * @throws Error 还没开启事务
+     * 提交事务（手动管理，不推荐）
+     * @deprecated 建议使用 transaction() 方法自动管理事务
+     * @throws Error 此方法在 AsyncLocalStorage 模式下不支持
      */
     const commit = async () => {
-        try {
-            if (!transactionConnection) {
-                throw new Error('还没开启事务');
-            }
-            await transactionConnection.commit();
-            // debug && logger.debug('提交事务', transactionConnection.threadId);
-        } finally {
-            transactionConnection?.release();
-            // debug && logger.debug('释放事务连接', transactionConnection?.threadId);
-            transactionConnection = void 0;
-            inTransaction = false;
-        }
+        throw new Error('使用 AsyncLocalStorage 模式时，请使用 transaction() 方法代替 commit()');
     };
 
     /**
-     * 回滚事务并释放连接
-     * @throws Error 还没开启事务
+     * 回滚事务（手动管理，不推荐）
+     * @deprecated 建议使用 transaction() 方法自动管理事务
+     * @throws Error 此方法在 AsyncLocalStorage 模式下不支持
      */
     const rollback = async () => {
-        try {
-            if (!transactionConnection) {
-                throw new Error('还没开启事务');
-            }
-            await transactionConnection.rollback();
-            // debug && logger.debug('回滚事务', transactionConnection.threadId);
-        } finally {
-            transactionConnection?.release();
-            // debug && logger.debug('释放事务连接', transactionConnection?.threadId);
-            transactionConnection = void 0;
-            inTransaction = false;
-        }
+        throw new Error('使用 AsyncLocalStorage 模式时，请使用 transaction() 方法代替 rollback()');
     };
 
     /**
@@ -212,7 +222,8 @@ export const useDao = (options: DaoOptions) => {
                 throw new SqlSyntaxError({ sql, values }, err);
             } else if (['ETIMEDOUT'].includes(err.code)) {
                 // 事务中不允许重试，防止状态被破坏
-                if (inTransaction) {
+                const ctx = asyncLocalStorage.getStore();
+                if (ctx) {
                     throw new TimeoutError('事务中发生超时，不允许重试');
                 }
                 if (retry < 3) {
@@ -224,7 +235,8 @@ export const useDao = (options: DaoOptions) => {
                 throw new TimeoutError(err);
             } else if (err.message.includes('connection is in closed state')) {
                 // 事务中连接关闭应抛出错误
-                if (inTransaction) {
+                const ctx = asyncLocalStorage.getStore();
+                if (ctx) {
                     throw new ConnectFaildError('事务连接已关闭');
                 }
                 // 添加重试次数限制
@@ -238,10 +250,8 @@ export const useDao = (options: DaoOptions) => {
                 throw new UnhandleError({ sql, values }, err);
             }
         } finally {
-            // 只有非事务状态下才释放连接，事务中的连接由 commit/rollback 释放
-            if (!inTransaction) {
-                releaseConnection(connection);
-            }
+            // 只有非事务状态下才释放连接，事务中的连接由 transaction 方法释放
+            releaseConnection(connection);
         }
     };
     /**
@@ -450,15 +460,6 @@ export const useDao = (options: DaoOptions) => {
      * 关闭连接池
      */
     const close = async () => {
-        if (transactionConnection) {
-            if (inTransaction) {
-                logger.warn('关闭连接池时存在未完成的事务，自动回滚');
-                await rollback();
-            } else {
-                transactionConnection.release();
-                transactionConnection = void 0;
-            }
-        }
         await pool.end();
         debug && logger.debug('连接池已关闭');
     };
@@ -479,6 +480,7 @@ export const useDao = (options: DaoOptions) => {
         revoke,
         deletion,
         exec,
+        transaction,
         beginTransaction,
         commit,
         rollback,
