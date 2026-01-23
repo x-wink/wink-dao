@@ -1,3 +1,13 @@
+## [0.0.7](https://github.com/x-wink/wink-dao/compare/v0.0.6...v0.0.7) (2026-01-23)
+
+
+### Bug Fixes
+
+* build ([1e0e798](https://github.com/x-wink/wink-dao/commit/1e0e798e867b5d7e0d50928af914a0c77fbe41dd))
+* transaction ([a96d9f7](https://github.com/x-wink/wink-dao/commit/a96d9f77b6b08a3ac5a5b73bb9d3525262d73551))
+
+
+
 ## [0.0.6](https://github.com/x-wink/wink-dao/compare/v0.0.5...v0.0.6) (2025-12-29)
 
 ### Bug Fixes
