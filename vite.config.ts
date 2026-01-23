@@ -31,11 +31,12 @@ export default (configEnv: ConfigEnv) => {
                 name: packageJson.name.replace(/-(\w)/gi, (_, v) => v.toUpperCase()),
             },
             rollupOptions: {
-                external: ['mysql2', 'mysql2/promise'],
+                external: ['mysql2', 'mysql2/promise', 'async_hooks'],
                 output: {
                     globals: {
                         mysql: 'mysql2',
                         'mysql2/promise': 'mysql2/promise',
+                        async_hooks: 'async_hooks',
                     },
                 },
             },
